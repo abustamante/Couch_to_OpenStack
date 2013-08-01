@@ -3,8 +3,10 @@
 require 'securerandom'
 
 nodes = {
+    'proxy' => [1,10],
     'controller'  => [1, 200],
     'compute'  => [1, 201],
+    'cinder' => [1, 211],
 }
 
 # This is some magic to help avoid network collisions.
@@ -14,7 +16,7 @@ third_octet = SecureRandom.random_number(200)
 
 Vagrant.configure("2") do |config|
     # We assume virtualbox, if using Fusion, you'll want to change this as needed
-    config.vm.box = "precise64"
+    config.vm.box = "precise64.box"
     config.vm.box_url = "http://files.vagrantup.com/precise64.box"
     #VMware Fusion Users: Comment the line above and uncomment the line below
     #config.vm.box_url = "http://files.vagrantup.com/precise64_vmware.box"
@@ -36,10 +38,14 @@ Vagrant.configure("2") do |config|
                 # Default  
                   v.vmx["memsize"] = 1024
         	        if prefix == "compute"
-	              	  v.vmx["memsize"] = 3128
-                    v.vmx["numvcpus"] = 2
+	                   v.vmx["memsize"] = 3128
+                     v.vmx["numvcpus"] = 2
 	                elsif prefix == "controller"
-    	              v.vmx["memsize"] = 2048
+    	               v.vmx["memsize"] = 2048
+                  elsif prefix == "client"
+                     v.vmx["memsize"] = 512
+                  elsif prefix == "proxy"
+                     v.vmx["memsize"] = 512
 	                end
                 end
 
@@ -49,10 +55,14 @@ Vagrant.configure("2") do |config|
                   vbox.customize ["modifyvm", :id, "--memory", 1024]
                   vbox.customize ["modifyvm", :id, "--cpus", 1]
 		              if prefix == "compute"
-                    	vbox.customize ["modifyvm", :id, "--memory", 3128]
-                      vbox.customize ["modifyvm", :id, "--cpus", 2]
+                     vbox.customize ["modifyvm", :id, "--memory", 3128]
+                     vbox.customize ["modifyvm", :id, "--cpus", 2]
 		              elsif prefix == "controller"
-		                  vbox.customize ["modifyvm", :id, "--memory", 2048]
+		                 vbox.customize ["modifyvm", :id, "--memory", 2048]
+		              elsif prefix == "client"
+                      vbox.customize ["modifyvm", :id, "--memory", 512]
+		              elsif prefix == "proxy"
+                      vbox.customize ["modifyvm", :id, "--memory", 512]
 		              end
                 end
             end

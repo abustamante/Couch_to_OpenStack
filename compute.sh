@@ -10,7 +10,7 @@ GLANCE_HOST=${CONTROLLER_HOST}
 nova_compute_install() {
 
 	# Install some packages:
-	sudo apt-get -y --force-yes install nova-api-metadata nova-compute nova-compute-qemu nova-doc nova-network
+	sudo apt-get -y install nova-api-metadata nova-compute nova-compute-qemu nova-doc nova-network
 	sudo apt-get install -y vlan bridge-utils
 	sudo apt-get install -y libvirt-bin pm-utils
 	sudo service ntp restart
@@ -70,6 +70,12 @@ auto_assign_floating_ip=True
 #metadata_host = ${CONTROLLER_HOST}
 #metadata_listen = ${CONTROLLER_HOST}
 #metadata_listen_port = 8775
+
+# Cinder #
+volume_driver=nova.volume.driver.ISCSIDriver
+enabled_apis=ec2,osapi_compute,metadata
+volume_api_class=nova.volume.cinder.API
+iscsi_helper=tgtadm
 
 # Images
 image_service=nova.image.glance.GlanceImageService

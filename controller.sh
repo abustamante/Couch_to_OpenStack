@@ -1,11 +1,23 @@
 #. /vagrant/common.sh
+source /vagrant/.proxy
 
 export DEBIAN_FRONTEND=noninteractive
+
+# Setup Proxy
+export APT_PROXY=${PROXY_HOST}
+export APT_PROXY_PORT=3142
+#
+# If you have a proxy outside of your VirtualBox environment, use it
+if [[ ! -z "$APT_PROXY" ]]
+then
+	echo 'Acquire::http { Proxy "http://'${APT_PROXY}:${APT_PROXY_PORT}'"; };' | sudo tee /etc/apt/apt.conf.d/01apt-cacher-ng-proxy
+fi
+
 sudo apt-get update
 
 # Grizzly Goodness
 sudo apt-get -y install ubuntu-cloud-keyring
-echo "deb  http://ubuntu-cloud.archive.canonical.com/ubuntu precise-proposed/grizzly main" | sudo tee -a /etc/apt/sources.list.d/grizzly.list
+echo "deb  http://ubuntu-cloud.archive.canonical.com/ubuntu precise-updates/grizzly main" | sudo tee -a /etc/apt/sources.list.d/grizzly.list
 sudo apt-get update
 
 #sudo apt-get -y install
@@ -47,6 +59,9 @@ mysql -u root --password=${MYSQL_ROOT_PASS} -h localhost -e "GRANT ALL ON *.* to
 mysql -u root --password=${MYSQL_ROOT_PASS} -h localhost -e "GRANT ALL ON *.* to root@\"%\" IDENTIFIED BY \"${MYSQL_ROOT_PASS}\" WITH GRANT OPTION;"
 
 mysqladmin -uroot -p${MYSQL_ROOT_PASS} flush-privileges
+
+# Define environment variable to contain the OpenStack Controller IP for later use
+export OSCONTROLLER=$MY_IP
 
 ###############################
 # Keystone Install
@@ -108,6 +123,9 @@ USER_ID=$(keystone user-list | awk '/\ demo\ / {print $2}')
 # Assign the Member role to the demo user in cookbook
 keystone user-role-add --user $USER_ID --role $ROLE_ID --tenant_id $TENANT_ID
 
+# Cinder Block Storage Endpoint
+keystone service-create --name volume --type volume --description 'Volume Service'
+
 # OpenStack Compute Nova API Endpoint
 keystone service-create --name nova --type compute --description 'OpenStack Compute Service'
 
@@ -156,6 +174,16 @@ INTERNAL=$PUBLIC
 
 keystone endpoint-create --region RegionOne --service_id $EC2_SERVICE_ID --publicurl $PUBLIC --adminurl $ADMIN --internalurl $INTERNAL
 
+# Cinder Block Storage Service
+CINDER_SERVICE_ID=$(keystone service-list | awk '/\ volume\ / {print $2}')
+CINDER_ENDPOINT=$(echo $OSCONTROLLER | sed 's/\.[0-9]*$/.211/') #Change last octet of OpenStack Controller IP to the Cinder IP.  Concerned about hardcoding it...
+PUBLIC="http://$CINDER_ENDPOINT:8776/v1/%(tenant_id)s" 
+ADMIN=$PUBLIC
+INTERNAL=$PUBLIC
+
+keystone endpoint-create --region RegionOne --service_id $CINDER_SERVICE_ID --publicurl $PUBLIC --adminurl $ADMIN --internalurl $INTERNAL
+
+
 # Service Tenant
 keystone tenant-create --name service --description "Service Tenant" --enabled true
 
@@ -166,11 +194,15 @@ keystone user-create --name glance --pass glance --tenant_id $SERVICE_TENANT_ID 
 
 keystone user-create --name nova --pass nova --tenant_id $SERVICE_TENANT_ID --email nova@localhost --enabled true
 
-# Get the admin role id
+keystone user-create --name cinder --pass cinder --tenant_id $SERVICE_TENANT_ID --email cinder@localhost --enabled true
+
+
+# Set user ids
 ADMIN_ROLE_ID=$(keystone role-list | awk '/\ admin\ / {print $2}')
 KEYSTONE_USER_ID=$(keystone user-list | awk '/\ keystone\ / {print $2}')
 GLANCE_USER_ID=$(keystone user-list | awk '/\ glance\ / {print $2}')
 NOVA_USER_ID=$(keystone user-list | awk '/\ nova\ / {print $2}')
+CINDER_USER_ID=$(keystone user-list | awk '/\ cinder \ / {print $2}')
 
 # Assign the keystone user the admin role in service tenant
 keystone user-role-add --user $KEYSTONE_USER_ID --role $ADMIN_ROLE_ID --tenant_id $SERVICE_TENANT_ID
@@ -181,6 +213,8 @@ keystone user-role-add --user $GLANCE_USER_ID --role $ADMIN_ROLE_ID --tenant_id 
 # Assign the nova user the admin role in service tenant
 keystone user-role-add --user $NOVA_USER_ID --role $ADMIN_ROLE_ID --tenant_id $SERVICE_TENANT_ID
 
+# Assign the cinder user the admin role in service tenant
+keystone user-role-add --user $CINDER_USER_ID --role $ADMIN_ROLE_ID --tenant_id $SERVICE_TENANT_ID
 
 ###############################
 # Glance Install
@@ -188,9 +222,9 @@ keystone user-role-add --user $NOVA_USER_ID --role $ADMIN_ROLE_ID --tenant_id $S
 
 # Install Service
 sudo apt-get update
-sudo apt-get -y --force-yes install glance
-#sudo apt-get -y --force-yes install glance-client # borks because of repo issues. I presume will be fixed.
-sudo apt-get -y --force-yes install python-glanceclient 
+sudo apt-get -y install glance
+#sudo apt-get -y install glance-client # borks because of repo issues. I presume will be fixed.
+sudo apt-get -y install python-glanceclient 
 
 ###############################
 # Glance Configure
@@ -282,9 +316,9 @@ fi
 glance image-create --name='Ubuntu 12.04 x86_64 Server' --disk-format=qcow2 --container-format=bare --public < precise-server-cloudimg-amd64-disk1.img
 glance image-create --name='Cirros 0.3' --disk-format=qcow2 --container-format=bare --public < cirros-0.3.0-x86_64-disk.img
 
-######################
-# Chapter 3 COMPUTE  #
-######################
+###############################
+# Nova Install
+###############################
 
 # Create database
 MYSQL_HOST=${MY_IP}
@@ -299,7 +333,7 @@ mysql -uroot -p$MYSQL_ROOT_PASS -e 'CREATE DATABASE nova;'
 mysql -uroot -p$MYSQL_ROOT_PASS -e "GRANT ALL PRIVILEGES ON nova.* TO 'nova'@'%'"
 mysql -uroot -p$MYSQL_ROOT_PASS -e "SET PASSWORD FOR 'nova'@'%' = PASSWORD('$MYSQL_NOVA_PASS');"
 
-sudo apt-get -y --force-yes install rabbitmq-server nova-api nova-scheduler nova-objectstore dnsmasq nova-conductor
+sudo apt-get -y install rabbitmq-server nova-api nova-scheduler nova-objectstore dnsmasq nova-conductor
 
 # Clobber the nova.conf file with the following
 NOVA_CONF=/etc/nova/nova.conf
@@ -343,6 +377,12 @@ auto_assign_floating_ip=True
 #metadata_listen = ${CONTROLLER_HOST}
 #metadata_listen_port = 8775
 
+# Cinder #
+volume_driver=nova.volume.driver.ISCSIDriver
+enabled_apis=ec2,osapi_compute,metadata
+volume_api_class=nova.volume.cinder.API
+iscsi_helper=tgtadm
+
 # Images
 image_service=nova.image.glance.GlanceImageService
 glance_api_servers=${GLANCE_HOST}:9292
@@ -382,6 +422,16 @@ sudo start nova-scheduler
 sudo start nova-objectstore
 sudo start nova-conductor
 
+###############################
+# Cinder DB Create
+###############################
+
+# Install the DB
+MYSQL_ROOT_PASS=openstack
+MYSQL_CINDER_PASS=openstack
+mysql -uroot -p$MYSQL_ROOT_PASS -e 'CREATE DATABASE cinder;'
+mysql -uroot -p$MYSQL_ROOT_PASS -e "GRANT ALL PRIVILEGES ON cinder.* TO 'cinder'@'%';"
+mysql -uroot -p$MYSQL_ROOT_PASS -e "SET PASSWORD FOR 'cinder'@'%' = PASSWORD('$MYSQL_CINDER_PASS');"
 
 ###############################
 # OpenStack Deployment Complete
