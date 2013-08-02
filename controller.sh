@@ -138,6 +138,9 @@ keystone service-create --name keystone --type identity --description 'OpenStack
 # Glance Image Service Endpoint
 keystone service-create --name glance --type image --description 'OpenStack Image Service'
 
+# OpenStack Network Service Endpoint
+keystone service-create --name quantum --type network --description 'OpenStack Network Service'
+
 # Keystone OpenStack Identity Service
 KEYSTONE_SERVICE_ID=$(keystone service-list | awk '/\ keystone\ / {print $2}')
 
@@ -146,6 +149,15 @@ ADMIN="http://$ENDPOINT:35357/v2.0"
 INTERNAL=$PUBLIC
 
 keystone endpoint-create --region RegionOne --service_id $KEYSTONE_SERVICE_ID --publicurl $PUBLIC --adminurl $ADMIN --internalurl $INTERNAL
+
+# Neutron OpenStack Network Service
+QUANTUM_SERVICE_ID=$(keystone service-list | awk '/\ quantum\ / {print $2}')
+
+PUBLIC="http://$ENDPOINT:9696"
+ADMIN="http://$ENDPOINT:9696"
+INTERNAL=$PUBLIC
+
+keystone endpoint-create --region RegionOne --service_id $QUANTUM_SERVICE_ID --publicurl $PUBLIC --adminurl $ADMIN --internalurl $INTERNAL
 
 # Glance Image Service
 GLANCE_SERVICE_ID=$(keystone service-list | awk '/\ glance\ / {print $2}')
@@ -196,6 +208,7 @@ keystone user-create --name nova --pass nova --tenant_id $SERVICE_TENANT_ID --em
 
 keystone user-create --name cinder --pass cinder --tenant_id $SERVICE_TENANT_ID --email cinder@localhost --enabled true
 
+keystone user-create --name quantum --pass quantum --tenant_id $SERVICE_TENANT_ID --email quantum@localhost --enabled true
 
 # Set user ids
 ADMIN_ROLE_ID=$(keystone role-list | awk '/\ admin\ / {print $2}')
@@ -203,6 +216,7 @@ KEYSTONE_USER_ID=$(keystone user-list | awk '/\ keystone\ / {print $2}')
 GLANCE_USER_ID=$(keystone user-list | awk '/\ glance\ / {print $2}')
 NOVA_USER_ID=$(keystone user-list | awk '/\ nova\ / {print $2}')
 CINDER_USER_ID=$(keystone user-list | awk '/\ cinder \ / {print $2}')
+QUANTUM_USER_ID=$(keystone user-list | awk '/\ quantum \ / {print $2}')
 
 # Assign the keystone user the admin role in service tenant
 keystone user-role-add --user $KEYSTONE_USER_ID --role $ADMIN_ROLE_ID --tenant_id $SERVICE_TENANT_ID
@@ -216,15 +230,16 @@ keystone user-role-add --user $NOVA_USER_ID --role $ADMIN_ROLE_ID --tenant_id $S
 # Assign the cinder user the admin role in service tenant
 keystone user-role-add --user $CINDER_USER_ID --role $ADMIN_ROLE_ID --tenant_id $SERVICE_TENANT_ID
 
+# Assign the quantum user the admin role in service tenant
+keystone user-role-add --user $QUANTUM_USER_ID --role $ADMIN_ROLE_ID --tenant_id $SERVICE_TENANT_ID
+
 ###############################
 # Glance Install
 ###############################
 
 # Install Service
 sudo apt-get update
-sudo apt-get -y install glance
-#sudo apt-get -y install glance-client # borks because of repo issues. I presume will be fixed.
-sudo apt-get -y install python-glanceclient 
+sudo apt-get -y install glance python-glanceclient
 
 ###############################
 # Glance Configure
