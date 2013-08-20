@@ -1,6 +1,6 @@
 #. /vagrant/common.sh
-source /vagrant/.proxy
 
+source /vagrant/.proxy
 export DEBIAN_FRONTEND=noninteractive
 
 # Setup Proxy
@@ -10,23 +10,24 @@ export APT_PROXY_PORT=3142
 # If you have a proxy outside of your VirtualBox environment, use it
 if [[ ! -z "$APT_PROXY" ]]
 then
-	echo 'Acquire::http { Proxy "http://'${APT_PROXY}:${APT_PROXY_PORT}'"; };' | sudo tee /etc/apt/apt.conf.d/01apt-cacher-ng-proxy
+        echo 'Acquire::http { Proxy "http://'${APT_PROXY}:${APT_PROXY_PORT}'"; };' | sudo tee /etc/apt/apt.conf.d/01apt-cacher-n$
 fi
 
 sudo apt-get update
 
 # Grizzly Goodness
 sudo apt-get -y install ubuntu-cloud-keyring
-echo "deb  http://ubuntu-cloud.archive.canonical.com/ubuntu precise-updates/grizzly main" | sudo tee -a /etc/apt/sources.list.d/grizzly.list
+echo "deb  http://ubuntu-cloud.archive.canonical.com/ubuntu precise-proposed/grizzly main" | sudo tee -a /etc/apt/sources.list.d/grizzly.list
 sudo apt-get update
 
 #sudo apt-get -y install
 
 MY_IP=$(ifconfig eth1 | awk '/inet addr/ {split ($2,A,":"); print A[2]}')
+MY_PRIV_IP=$(ifconfig eth2 | awk '/inet addr/ {split ($2,A,":"); print A[2]}')
 
-# Must define your environment
-MYSQL_HOST=${CONTROLLER_HOST}
-GLANCE_HOST=${CONTROLLER_HOST}
+# Define environment variables to contain the OpenStack Controller Public and Private IP for later use with Cinder
+export OSCONTROLLER=$MY_IP
+export OSCONTROLLER_P=$MY_PRIV_IP
 
 # MySQL
 export MYSQL_HOST=$MY_IP
@@ -42,7 +43,7 @@ echo "mysql-server-5.5 mysql-server/root_password_again seen true" | sudo debcon
 # MySQL Install
 ###############################
 
-sudo apt-get -y install mysql-server python-mysqldb
+sudo apt-get -y install vim mysql-server python-mysqldb
 
 sudo sed -i "s/^bind\-address.*/bind-address = 0.0.0.0/g" /etc/mysql/my.cnf
 sudo sed -i "s/^#max_connections.*/max_connections = 512/g" /etc/mysql/my.cnf
@@ -60,8 +61,6 @@ mysql -u root --password=${MYSQL_ROOT_PASS} -h localhost -e "GRANT ALL ON *.* to
 
 mysqladmin -uroot -p${MYSQL_ROOT_PASS} flush-privileges
 
-# Define environment variable to contain the OpenStack Controller IP for later use
-export OSCONTROLLER=$MY_IP
 
 ###############################
 # Keystone Install
@@ -123,6 +122,9 @@ USER_ID=$(keystone user-list | awk '/\ demo\ / {print $2}')
 # Assign the Member role to the demo user in cookbook
 keystone user-role-add --user $USER_ID --role $ROLE_ID --tenant_id $TENANT_ID
 
+# Quantum Network Service Endpoint
+keystone service-create --name network --type network --description 'Quantum Network Service'
+
 # Cinder Block Storage Endpoint
 keystone service-create --name volume --type volume --description 'Volume Service'
 
@@ -138,9 +140,6 @@ keystone service-create --name keystone --type identity --description 'OpenStack
 # Glance Image Service Endpoint
 keystone service-create --name glance --type image --description 'OpenStack Image Service'
 
-# OpenStack Network Service Endpoint
-keystone service-create --name quantum --type network --description 'OpenStack Network Service'
-
 # Keystone OpenStack Identity Service
 KEYSTONE_SERVICE_ID=$(keystone service-list | awk '/\ keystone\ / {print $2}')
 
@@ -149,15 +148,6 @@ ADMIN="http://$ENDPOINT:35357/v2.0"
 INTERNAL=$PUBLIC
 
 keystone endpoint-create --region RegionOne --service_id $KEYSTONE_SERVICE_ID --publicurl $PUBLIC --adminurl $ADMIN --internalurl $INTERNAL
-
-# Neutron OpenStack Network Service
-QUANTUM_SERVICE_ID=$(keystone service-list | awk '/\ quantum\ / {print $2}')
-
-PUBLIC="http://$ENDPOINT:9696"
-ADMIN="http://$ENDPOINT:9696"
-INTERNAL=$PUBLIC
-
-keystone endpoint-create --region RegionOne --service_id $QUANTUM_SERVICE_ID --publicurl $PUBLIC --adminurl $ADMIN --internalurl $INTERNAL
 
 # Glance Image Service
 GLANCE_SERVICE_ID=$(keystone service-list | awk '/\ glance\ / {print $2}')
@@ -188,12 +178,22 @@ keystone endpoint-create --region RegionOne --service_id $EC2_SERVICE_ID --publi
 
 # Cinder Block Storage Service
 CINDER_SERVICE_ID=$(keystone service-list | awk '/\ volume\ / {print $2}')
-CINDER_ENDPOINT=$(echo $OSCONTROLLER | sed 's/\.[0-9]*$/.211/') #Change last octet of OpenStack Controller IP to the Cinder IP.  Concerned about hardcoding it...
+CINDER_ENDPOINT=$(echo $OSCONTROLLER | sed 's/\.[0-9]*$/.211/') #Change last octet of OpenStack Controller IP to the Cinder IP.  If you changed the Cinder IP's last octet, then change the .211 in this sed command
+
 PUBLIC="http://$CINDER_ENDPOINT:8776/v1/%(tenant_id)s" 
 ADMIN=$PUBLIC
 INTERNAL=$PUBLIC
 
 keystone endpoint-create --region RegionOne --service_id $CINDER_SERVICE_ID --publicurl $PUBLIC --adminurl $ADMIN --internalurl $INTERNAL
+
+# Quantum Network Service
+QUANTUM_SERVICE_ID=$(keystone service-list | awk '/\ network\ / {print $2}')
+
+PUBLIC="http://$ENDPOINT:9696/"
+ADMIN=$PUBLIC
+INTERNAL=$PUBLIC
+
+keystone endpoint-create --region RegionOne --service_id $QUANTUM_SERVICE_ID --publicurl $PUBLIC --adminurl $ADMIN --internalurl $INTERNAL
 
 
 # Service Tenant
@@ -216,7 +216,6 @@ KEYSTONE_USER_ID=$(keystone user-list | awk '/\ keystone\ / {print $2}')
 GLANCE_USER_ID=$(keystone user-list | awk '/\ glance\ / {print $2}')
 NOVA_USER_ID=$(keystone user-list | awk '/\ nova\ / {print $2}')
 CINDER_USER_ID=$(keystone user-list | awk '/\ cinder \ / {print $2}')
-QUANTUM_USER_ID=$(keystone user-list | awk '/\ quantum \ / {print $2}')
 
 # Assign the keystone user the admin role in service tenant
 keystone user-role-add --user $KEYSTONE_USER_ID --role $ADMIN_ROLE_ID --tenant_id $SERVICE_TENANT_ID
@@ -230,7 +229,10 @@ keystone user-role-add --user $NOVA_USER_ID --role $ADMIN_ROLE_ID --tenant_id $S
 # Assign the cinder user the admin role in service tenant
 keystone user-role-add --user $CINDER_USER_ID --role $ADMIN_ROLE_ID --tenant_id $SERVICE_TENANT_ID
 
-# Assign the quantum user the admin role in service tenant
+# Create quantum service user in the services tenant
+QUANTUM_USER_ID=$(keystone user-list | awk '/\ quantum \ / {print $2}')
+
+# Grant admin role to quantum service user
 keystone user-role-add --user $QUANTUM_USER_ID --role $ADMIN_ROLE_ID --tenant_id $SERVICE_TENANT_ID
 
 ###############################
@@ -239,11 +241,9 @@ keystone user-role-add --user $QUANTUM_USER_ID --role $ADMIN_ROLE_ID --tenant_id
 
 # Install Service
 sudo apt-get update
-sudo apt-get -y install glance python-glanceclient
-
-###############################
-# Glance Configure
-###############################
+sudo apt-get -y --force-yes install glance
+#sudo apt-get -y --force-yes install glance-client # borks because of repo issues. I presume will be fixed.
+sudo apt-get -y --force-yes install python-glanceclient 
 
 # Create database
 MYSQL_ROOT_PASS=openstack
@@ -332,6 +332,101 @@ glance image-create --name='Ubuntu 12.04 x86_64 Server' --disk-format=qcow2 --co
 glance image-create --name='Cirros 0.3' --disk-format=qcow2 --container-format=bare --public < cirros-0.3.0-x86_64-disk.img
 
 ###############################
+# Quantum Install
+###############################
+# Create database
+MYSQL_HOST=${MY_IP}
+GLANCE_HOST=${MY_IP}
+KEYSTONE_ENDPOINT=${MY_IP}
+CONTROLLER_HOST=${MY_IP}
+SERVICE_TENANT=service
+SERVICE_PASS=nova
+
+# Create database
+MYSQL_ROOT_PASS=openstack
+MYSQL_QUANTUM_PASS=openstack
+mysql -uroot -p$MYSQL_ROOT_PASS -e 'CREATE DATABASE quantum;'
+mysql -uroot -p$MYSQL_ROOT_PASS -e "GRANT ALL PRIVILEGES ON quantum.* TO 'quantum'@'%';"
+mysql -uroot -p$MYSQL_ROOT_PASS -e "SET PASSWORD FOR 'quantum'@'%' = PASSWORD('$MYSQL_QUANTUM_PASS');"
+
+# List the new user and role assigment
+keystone user-list --tenant-id $SERVICE_TENANT_ID
+keystone user-role-list --tenant-id $SERVICE_TENANT_ID --user-id $QUANTUM_USER_ID
+
+sudo apt-get -y install quantum-server quantum-plugin-openvswitch 
+# /etc/quantum/api-paste.ini
+rm -f /etc/quantum/api-paste.ini
+echo "
+[composite:quantum]
+use = egg:Paste#urlmap
+/: quantumversions
+/v2.0: quantumapi_v2_0
+
+[composite:quantumapi_v2_0]
+use = call:quantum.auth:pipeline_factory
+noauth = extensions quantumapiapp_v2_0
+keystone = authtoken keystonecontext extensions quantumapiapp_v2_0
+
+[filter:keystonecontext]
+paste.filter_factory = quantum.auth:QuantumKeystoneContext.factory
+
+[filter:authtoken]
+paste.filter_factory = keystoneclient.middleware.auth_token:filter_factory
+auth_host = ${CONTROLLER_HOST}
+auth_port = 35357
+auth_protocol = http
+admin_tenant_name = service
+admin_user = quantum
+admin_password = quantum
+
+[filter:extensions]
+paste.filter_factory = quantum.api.extensions:plugin_aware_extension_middleware_factory
+
+[app:quantumversions]
+paste.app_factory = quantum.api.versions:Versions.factory
+
+[app:quantumapiapp_v2_0]
+paste.app_factory = quantum.api.v2.router:APIRouter.factory
+" | tee -a /etc/quantum/api-paste.ini
+
+
+# /etc/quantum/plugins/openvswitch/ovs_quantum_plugin.ini
+echo "
+[DATABASE]
+sql_connection=mysql://quantum:openstack@${MYSQL_HOST}/quantum
+[OVS]
+tenant_network_type=gre
+tunnel_id_ranges=1:1000
+integration_bridge=br-int
+tunnel_bridge=br-tun
+enable_tunneling=True
+[SECURITYGROUP]
+# Firewall driver for realizing quantum security group function
+firewall_driver = quantum.agent.linux.iptables_firewall.OVSHybridIptablesFirewallDriver
+" | tee -a /etc/quantum/plugins/openvswitch/ovs_quantum_plugin.ini
+
+# Configure Quantum
+sudo sed -i "s/# rabbit_host = localhost/rabbit_host = ${CONTROLLER_HOST}/g" /etc/quantum/quantum.conf
+sudo sed -i 's/# auth_strategy = keystone/auth_strategy = keystone/g' /etc/quantum/quantum.conf
+sudo sed -i "s/auth_host = 127.0.0.1/auth_host = ${CONTROLLER_HOST}/g" /etc/quantum/quantum.conf
+sudo sed -i 's/admin_tenant_name = %SERVICE_TENANT_NAME%/admin_tenant_name = service/g' /etc/quantum/quantum.conf
+sudo sed -i 's/admin_user = %SERVICE_USER%/admin_user = quantum/g' /etc/quantum/quantum.conf
+sudo sed -i 's/admin_password = %SERVICE_PASSWORD%/admin_password = quantum/g' /etc/quantum/quantum.conf
+sudo sed -i 's/^root_helper.*/root_helper = sudo/g' /etc/quantum/quantum.conf
+
+echo "
+Defaults !requiretty
+quantum ALL=(ALL:ALL) NOPASSWD:ALL" | tee -a /etc/sudoers
+
+sudo service quantum-server restart
+
+# Create a network and subnet
+#TENANT_ID=$(keystone tenant-list | awk '/\ cookbook\ / {print $2}')
+#PRIVATE_NET_ID=`quantum net-create private | awk '/ id / { print $4 }'`
+#PRIVATE_SUBNET1_ID=`quantum subnet-create --tenant-id $TENANT_ID --name private-subnet1 --ip-version 4 $PRIVATE_NET_ID 10.0.0.0/29 | awk '/ id / { print $4 }'`
+#
+
+###############################
 # Nova Install
 ###############################
 
@@ -348,7 +443,7 @@ mysql -uroot -p$MYSQL_ROOT_PASS -e 'CREATE DATABASE nova;'
 mysql -uroot -p$MYSQL_ROOT_PASS -e "GRANT ALL PRIVILEGES ON nova.* TO 'nova'@'%'"
 mysql -uroot -p$MYSQL_ROOT_PASS -e "SET PASSWORD FOR 'nova'@'%' = PASSWORD('$MYSQL_NOVA_PASS');"
 
-sudo apt-get -y install rabbitmq-server nova-api nova-scheduler nova-objectstore dnsmasq nova-conductor
+sudo apt-get -y --force-yes install rabbitmq-server nova-api nova-scheduler nova-objectstore dnsmasq nova-conductor
 
 # Clobber the nova.conf file with the following
 NOVA_CONF=/etc/nova/nova.conf
@@ -384,12 +479,25 @@ ec2_dmz_host=${MYSQL_HOST}
 ec2_private_dns_show_ip=True
 
 # Network settings
-public_interface=eth1
-force_dhcp_release=True
-auto_assign_floating_ip=True
+network_api_class=nova.network.quantumv2.api.API
+quantum_url=http://${MY_IP}:9696
+quantum_auth_strategy=keystone
+quantum_admin_tenant_name=service
+quantum_admin_username=quantum
+quantum_admin_password=quantum
+quantum_admin_auth_url=http://${MY_IP}:35357/v2.0
+libvirt_vif_driver=nova.virt.libvirt.vif.LibvirtHybridOVSBridgeDriver
+linuxnet_interface_driver=nova.network.linux_net.LinuxOVSInterfaceDriver
+#firewall_driver=nova.virt.libvirt.firewall.IptablesFirewallDriver
+security_group_api=quantum
+firewall_driver=nova.virt.firewall.NoopFirewallDriver
+
+service_quantum_metadata_proxy=true
+quantum_metadata_proxy_shared_secret=foo
+
 #Metadata
-#metadata_host = ${CONTROLLER_HOST}
-#metadata_listen = ${CONTROLLER_HOST}
+#metadata_host = ${MYSQL_HOST}
+#metadata_listen = ${MYSQL_HOST}
 #metadata_listen_port = 8775
 
 # Cinder #
@@ -397,6 +505,13 @@ volume_driver=nova.volume.driver.ISCSIDriver
 enabled_apis=ec2,osapi_compute,metadata
 volume_api_class=nova.volume.cinder.API
 iscsi_helper=tgtadm
+ #set private IP address for providing iSCSI storage to VMs
+iscsi_ip_address = $(echo $OSCONTROLLER_P | sed 's/\.[0-9]*$/.211/')
+ #may not be necessary
+volume_name_template = volume-%s
+ #LVM Group name generated by cinder.sh
+volume_group = cinder-volumes
+
 
 # Images
 image_service=nova.image.glance.GlanceImageService
@@ -405,8 +520,8 @@ glance_api_servers=${GLANCE_HOST}:9292
 # Scheduler
 scheduler_default_filters=AllHostsFilter
 
-# Object Storage
-iscsi_helper=tgtadm
+# Object Storage <--- ??? Placeholder for Swift?
+#iscsi_helper=tgtadm
 
 # Auth
 auth_strategy=keystone
@@ -453,7 +568,7 @@ mysql -uroot -p$MYSQL_ROOT_PASS -e "SET PASSWORD FOR 'cinder'@'%' = PASSWORD('$M
 ###############################
 
 # Create a .stackrc file
-cat > /root/.stackrc <<EOF
+cat > /vagrant/.stackrc <<EOF
 export OS_TENANT_NAME=cookbook
 export OS_USERNAME=admin
 export OS_PASSWORD=openstack
@@ -463,5 +578,6 @@ EOF
 #Pass Controller IP to Common.sh and other nodes
 cat > /vagrant/.controller <<EOF
 export CONTROLLER_HOST=${MY_IP}
+export CONTROLLER_HOST_PRIV=${MY_PRIV_IP}
 EOF
 

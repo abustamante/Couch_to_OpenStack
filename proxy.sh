@@ -12,7 +12,7 @@ sudo add-apt-repository ppa:ubuntu-cloud-archive/grizzly-staging
 sudo apt-get update
 sudo apt-get install iftop iptraf vim curl wget lighttpd -y
 
-echo 'Acquire::http { Proxy "http://${MY_IP}:3142"; };' | sudo tee /etc/apt/apt.conf.d/01apt-cacher-ng-proxy
+echo "Acquire::http { Proxy 'http://${MY_IP}:3142'; };" | sudo tee /etc/apt/apt.conf.d/01apt-cacher-ng-proxy
 
 #Pass Proxy IP to Common.sh and other nodes
 cat > /vagrant/.proxy <<EOF
