@@ -65,7 +65,7 @@ mysqladmin -uroot -p${MYSQL_ROOT_PASS} flush-privileges
 ###############################
 # Keystone Install
 ###############################
-sudo apt-get -y install keystone python-keyring
+sudo apt-get -y --force-yes install keystone python-keyring
 
 MYSQL_ROOT_PASS=openstack
 MYSQL_KEYSTONE_PASS=openstack
@@ -82,7 +82,7 @@ sudo start keystone
 
 sudo keystone-manage db_sync
 
-sudo apt-get -y install python-keystoneclient
+sudo apt-get -y --force-yes install python-keystoneclient
 
 export ENDPOINT=${MY_IP}
 export SERVICE_TOKEN=ADMIN
@@ -353,7 +353,7 @@ mysql -uroot -p$MYSQL_ROOT_PASS -e "SET PASSWORD FOR 'quantum'@'%' = PASSWORD('$
 keystone user-list --tenant-id $SERVICE_TENANT_ID
 keystone user-role-list --tenant-id $SERVICE_TENANT_ID --user-id $QUANTUM_USER_ID
 
-sudo apt-get -y install quantum-server quantum-plugin-openvswitch 
+sudo apt-get -y --force-yes install quantum-server quantum-plugin-openvswitch 
 # /etc/quantum/api-paste.ini
 rm -f /etc/quantum/api-paste.ini
 echo "
@@ -413,6 +413,7 @@ sudo sed -i 's/admin_tenant_name = %SERVICE_TENANT_NAME%/admin_tenant_name = ser
 sudo sed -i 's/admin_user = %SERVICE_USER%/admin_user = quantum/g' /etc/quantum/quantum.conf
 sudo sed -i 's/admin_password = %SERVICE_PASSWORD%/admin_password = quantum/g' /etc/quantum/quantum.conf
 sudo sed -i 's/^root_helper.*/root_helper = sudo/g' /etc/quantum/quantum.conf
+sudo sed -i 's/# allow_overlapping_ips = False/allow_overlapping_ips = True/g' /etc/quantum/quantum.conf
 
 echo "
 Defaults !requiretty
@@ -563,6 +564,10 @@ mysql -uroot -p$MYSQL_ROOT_PASS -e 'CREATE DATABASE cinder;'
 mysql -uroot -p$MYSQL_ROOT_PASS -e "GRANT ALL PRIVILEGES ON cinder.* TO 'cinder'@'%';"
 mysql -uroot -p$MYSQL_ROOT_PASS -e "SET PASSWORD FOR 'cinder'@'%' = PASSWORD('$MYSQL_CINDER_PASS');"
 
+###############################
+# Everyone loves Horizon dashboard
+###############################
+sudo apt-get -y --force-yes install openstack-dashboard
 ###############################
 # OpenStack Deployment Complete
 ###############################

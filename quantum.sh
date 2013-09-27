@@ -10,19 +10,20 @@
 
 # The routeable IP of the node is on our eth1 interface
 MY_IP=$(ifconfig eth1 | awk '/inet addr/ {split ($2,A,":"); print A[2]}')
+ETH3_IP=$(ifconfig eth3 | awk '/inet addr/ {split ($2,A,":"); print A[2]}')
 
 sysctl net.ipv4.ip_forward=1
 
 sudo apt-get update
 #sudo apt-get -y upgrade
 
-sudo apt-get -y install vim linux-headers-`uname -r`
+sudo apt-get -y --force-yes install vim linux-headers-`uname -r`
 
-sudo apt-get -y install vlan bridge-utils dnsmasq-base dnsmasq-utils
+sudo apt-get -y --force-yes install vlan bridge-utils dnsmasq-base dnsmasq-utils
 
-sudo apt-get -y install openvswitch-switch openvswitch-datapath-dkms
+sudo apt-get -y --force-yes install openvswitch-switch openvswitch-datapath-dkms
 
-sudo apt-get -y install quantum-dhcp-agent quantum-l3-agent quantum-plugin-openvswitch quantum-plugin-openvswitch-agent 
+sudo apt-get -y --force-yes install quantum-dhcp-agent quantum-l3-agent quantum-plugin-openvswitch quantum-plugin-openvswitch-agent 
 
 sudo /etc/init.d/openvswitch-switch start
 
@@ -37,7 +38,7 @@ sudo ovs-vsctl add-port br-ex eth3
 # Edit the /etc/network/interfaces file for eth3?
 sudo ifconfig eth3 0.0.0.0 up
 sudo ip link set eth3 promisc on
-
+sudo ifconfig br-ex $ETH3_IP netmask 255.255.255.0
 
 # Configuration
 
@@ -113,7 +114,7 @@ sudo sed -i 's/admin_tenant_name = %SERVICE_TENANT_NAME%/admin_tenant_name = ser
 sudo sed -i 's/admin_user = %SERVICE_USER%/admin_user = quantum/g' /etc/quantum/quantum.conf
 sudo sed -i 's/admin_password = %SERVICE_PASSWORD%/admin_password = quantum/g' /etc/quantum/quantum.conf
 sudo sed -i 's/^root_helper.*/root_helper = sudo/g' /etc/quantum/quantum.conf
-
+sudo sed -i 's/# allow_overlapping_ips = False/allow_overlapping_ips = True/g' /etc/quantum/quantum.conf
 
 
 # Restart Quantum Services
@@ -139,7 +140,7 @@ auth_region = RegionOne
 admin_tenant_name = service
 admin_user = quantum
 admin_password = quantum
-metadata_proxy_shared_secret = helloOpenStack
+metadata_proxy_shared_secret = foo
 nova_metadata_ip = ${CONTROLLER_HOST}
 nova_metadata_port = 8775
 " | tee -a /etc/quantum/metadata_agent.ini

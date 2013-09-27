@@ -1,6 +1,7 @@
 . /vagrant/common.sh
 
 MY_IP=$(ifconfig eth1 | awk '/inet addr/ {split ($2,A,":"); print A[2]}')
+ETH3_IP=$(ifconfig eth3 | awk '/inet addr/ {split ($2,A,":"); print A[2]}')
 
 # OpenStack Controller Private IP for use with generating Cinder target IP
 OSC_PRIV_IP=${CONTROLLER_HOST_PRIV}
@@ -16,8 +17,8 @@ nova_compute_install() {
 
 	# Install some packages:
 	sudo apt-get -y --force-yes install nova-api-metadata nova-compute nova-compute-qemu nova-doc
-	sudo apt-get install -y vim vlan bridge-utils
-	sudo apt-get install -y libvirt-bin pm-utils sysfsutils
+	sudo apt-get -y --force-yes install vim vlan bridge-utils
+	sudo apt-get -y --force-yes install libvirt-bin pm-utils sysfsutils
 	sudo service ntp restart
 }
 
@@ -33,14 +34,20 @@ sysctl net.ipv4.ip_forward=1
 sudo service libvirt-bin restart
 
 # OpenVSwitch
-sudo apt-get install -y linux-headers-`uname -r` build-essential
-sudo apt-get install -y openvswitch-switch openvswitch-datapath-dkms
+sudo apt-get -y --force-yes install linux-headers-`uname -r` build-essential
+sudo apt-get -y --force-yes install openvswitch-switch openvswitch-datapath-dkms
 
 # Make the bridge br-int, used for VM integration
-ovs-vsctl add-br br-int
+sudo ovs-vsctl add-br br-int
+sudo ovs-vsctl add-br br-ex
+sudo ovs-vsctl add-port br-ex eth3
+
+sudo ifconfig eth3 0.0.0.0 up
+sudo ip link set eth3 promisc on
+sudo ifconfig br-ex $ETH3_IP netmask 255.255.255.0 up
 
 # Quantum
-sudo apt-get install -y quantum-plugin-openvswitch-agent python-cinderclient
+sudo apt-get -y --force-yes install quantum-plugin-openvswitch-agent python-cinderclient
 
 # Configure Quantum
 # /etc/quantum/plugins/openvswitch/ovs_quantum_plugin.ini
@@ -51,9 +58,14 @@ sudo apt-get install -y quantum-plugin-openvswitch-agent python-cinderclient
 #sudo sed -i 's/# Example: tenant_network_type = gre/tenant_network_type = gre/g' /etc/quantum/plugins/openvswitch/ovs_quantum_plugin.ini
 #sudo sed -i 's/# Example: tunnel_id_ranges = 1:1000/tunnel_id_ranges = 1:1000/g' /etc/quantum/plugins/openvswitch/ovs_quantum_plugin.ini
 #sudo sed -i "s/# Default: local_ip =/local_ip = ${MY_IP}/g" /etc/quantum/plugins/openvswitch/ovs_quantum_plugin.ini
+sudo rm -f /etc/quantum/plugins/openvswitch/ovs_quantum_plugin.ini
 echo "
 [DATABASE]
+reconnect_interval = 2
 sql_connection=mysql://quantum:openstack@${CONTROLLER_HOST}/quantum
+[AGENT]
+# Agent's polling interval in seconds
+polling_interval = 2
 [OVS]
 tenant_network_type=gre
 tunnel_id_ranges=1:1000
@@ -65,7 +77,7 @@ root_helper = sudo /usr/bin/quantum-rootwrap /etc/quantum/rootwrap.conf
 [SECURITYGROUP]
 # Firewall driver for realizing quantum security group function
 firewall_driver = quantum.agent.linux.iptables_firewall.OVSHybridIptablesFirewallDriver
-" | tee -a /etc/quantum/plugins/openvswitch/ovs_quantum_plugin.ini
+" | sudo tee -a /etc/quantum/plugins/openvswitch/ovs_quantum_plugin.ini
 
 
 # /etc/quantum/quantum.conf
@@ -76,6 +88,7 @@ sudo sed -i 's/admin_tenant_name = %SERVICE_TENANT_NAME%/admin_tenant_name = ser
 sudo sed -i 's/admin_user = %SERVICE_USER%/admin_user = quantum/g' /etc/quantum/quantum.conf
 sudo sed -i 's/admin_password = %SERVICE_PASSWORD%/admin_password = quantum/g' /etc/quantum/quantum.conf
 sudo sed -i 's/^root_helper.*/root_helper = sudo/g' /etc/quantum/quantum.conf
+sudo sed -i 's/# allow_overlapping_ips = False/allow_overlapping_ips = True/g' /etc/quantum/quantum.conf
 
 echo "
 Defaults !requiretty
