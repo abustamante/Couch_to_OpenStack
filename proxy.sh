@@ -8,8 +8,7 @@ apt-get update && sudo apt-get install ubuntu-cloud-keyring apt-cacher-ng -y
 
 # Setup our repo's
 sudo apt-get install python-software-properties -y
-sudo add-apt-repository ppa:ubuntu-cloud-archive/grizzly-staging
-sudo add-apt-repository ppa:openstack-ubuntu-testing/grizzly-trunk-testing
+sudo add-apt-repository ppa:ubuntu-cloud-archive/havana-staging
 sudo apt-get update
 sudo apt-get install iftop iptraf vim curl wget lighttpd -y
 

@@ -16,9 +16,9 @@ export OSCONTROLLER_P=$OSC_PRIV_IP
 nova_compute_install() {
 
 	# Install some packages:
-	sudo apt-get -y --force-yes install nova-api-metadata nova-compute nova-compute-qemu nova-doc
-	sudo apt-get -y --force-yes install vim vlan bridge-utils
-	sudo apt-get -y --force-yes install libvirt-bin pm-utils sysfsutils
+	sudo apt-get -y install nova-api-metadata nova-compute nova-compute-kvm nova-doc
+	sudo apt-get -y install vim vlan bridge-utils
+	sudo apt-get -y install libvirt-bin pm-utils sysfsutils
 	sudo service ntp restart
 }
 
@@ -47,22 +47,22 @@ sudo ip link set eth3 promisc on
 sudo ifconfig br-ex $ETH3_IP netmask 255.255.255.0 up
 
 # Quantum
-sudo apt-get -y --force-yes install quantum-plugin-openvswitch-agent python-cinderclient
+sudo apt-get -y install neutron-plugin-openvswitch-agent python-cinderclient
 
-# Configure Quantum
-# /etc/quantum/plugins/openvswitch/ovs_quantum_plugin.ini
-#sudo sed -i "s|sql_connection = sqlite:////var/lib/quantum/ovs.sqlite|sql_connection = mysql://quantum:openstack@${CONTROLLER_HOST}/quantum|g"  /etc/quantum/plugins/openvswitch/ovs_quantum_plugin.ini
-#sudo sed -i 's/# Default: integration_bridge = br-int/integration_bridge = br-int/g' /etc/quantum/plugins/openvswitch/ovs_quantum_plugin.ini
-#sudo sed -i 's/# Default: tunnel_bridge = br-tun/tunnel_bridge = br-tun/g' /etc/quantum/plugins/openvswitch/ovs_quantum_plugin.ini
-#sudo sed -i 's/# Default: enable_tunneling = False/enable_tunneling = True/g' /etc/quantum/plugins/openvswitch/ovs_quantum_plugin.ini
-#sudo sed -i 's/# Example: tenant_network_type = gre/tenant_network_type = gre/g' /etc/quantum/plugins/openvswitch/ovs_quantum_plugin.ini
-#sudo sed -i 's/# Example: tunnel_id_ranges = 1:1000/tunnel_id_ranges = 1:1000/g' /etc/quantum/plugins/openvswitch/ovs_quantum_plugin.ini
-#sudo sed -i "s/# Default: local_ip =/local_ip = ${MY_IP}/g" /etc/quantum/plugins/openvswitch/ovs_quantum_plugin.ini
-sudo rm -f /etc/quantum/plugins/openvswitch/ovs_quantum_plugin.ini
+# Configure Neutron
+# /etc/neutron/plugins/openvswitch/ovs_neutron_plugin.ini
+#sudo sed -i "s|sql_connection = sqlite:////var/lib/quantum/ovs.sqlite|sql_connection = mysql://neutron:openstack@${CONTROLLER_HOST}/neutron|g"  /etc/neutron/plugins/openvswitch/ovs_neutron_plugin.ini
+#sudo sed -i 's/# Default: integration_bridge = br-int/integration_bridge = br-int/g' /etc/neutron/plugins/openvswitch/ovs_neutron_plugin.ini
+#sudo sed -i 's/# Default: tunnel_bridge = br-tun/tunnel_bridge = br-tun/g' /etc/neutron/plugins/openvswitch/ovs_neutron_plugin.ini
+#sudo sed -i 's/# Default: enable_tunneling = False/enable_tunneling = True/g' /etc/neutron/plugins/openvswitch/ovs_neutron_plugin.ini
+#sudo sed -i 's/# Example: tenant_network_type = gre/tenant_network_type = gre/g' /etc/neutron/plugins/openvswitch/ovs_neutron_plugin.ini
+#sudo sed -i 's/# Example: tunnel_id_ranges = 1:1000/tunnel_id_ranges = 1:1000/g' /etc/neutron/plugins/openvswitch/ovs_neutron_plugin.ini
+#sudo sed -i "s/# Default: local_ip =/local_ip = ${MY_IP}/g" /etc/neutron/plugins/openvswitch/ovs_neutron_plugin.ini
+sudo rm -f /etc/neutron/plugins/openvswitch/ovs_neutron_plugin.ini
 echo "
 [DATABASE]
 reconnect_interval = 2
-sql_connection=mysql://quantum:openstack@${CONTROLLER_HOST}/quantum
+sql_connection=mysql://neutron:openstack@${CONTROLLER_HOST}/neutron
 [AGENT]
 # Agent's polling interval in seconds
 polling_interval = 2
@@ -73,29 +73,30 @@ integration_bridge=br-int
 tunnel_bridge=br-tun
 local_ip=${MY_IP}
 enable_tunneling=True
-root_helper = sudo /usr/bin/quantum-rootwrap /etc/quantum/rootwrap.conf
+root_helper = sudo /usr/bin/neutron-rootwrap /etc/neutron/rootwrap.conf
 [SECURITYGROUP]
 # Firewall driver for realizing quantum security group function
-firewall_driver = quantum.agent.linux.iptables_firewall.OVSHybridIptablesFirewallDriver
-" | sudo tee -a /etc/quantum/plugins/openvswitch/ovs_quantum_plugin.ini
+firewall_driver = neutron.agent.linux.iptables_firewall.OVSHybridIptablesFirewallDriver
+" | sudo tee -a /etc/neutron/plugins/openvswitch/ovs_neutron_plugin.ini
 
 
-# /etc/quantum/quantum.conf
-sudo sed -i "s/# rabbit_host = localhost/rabbit_host = ${CONTROLLER_HOST}/g" /etc/quantum/quantum.conf
-sudo sed -i 's/# auth_strategy = keystone/auth_strategy = keystone/g' /etc/quantum/quantum.conf
-sudo sed -i "s/auth_host = 127.0.0.1/auth_host = ${CONTROLLER_HOST}/g" /etc/quantum/quantum.conf
-sudo sed -i 's/admin_tenant_name = %SERVICE_TENANT_NAME%/admin_tenant_name = service/g' /etc/quantum/quantum.conf
-sudo sed -i 's/admin_user = %SERVICE_USER%/admin_user = quantum/g' /etc/quantum/quantum.conf
-sudo sed -i 's/admin_password = %SERVICE_PASSWORD%/admin_password = quantum/g' /etc/quantum/quantum.conf
-sudo sed -i 's/^root_helper.*/root_helper = sudo/g' /etc/quantum/quantum.conf
-sudo sed -i 's/# allow_overlapping_ips = False/allow_overlapping_ips = True/g' /etc/quantum/quantum.conf
+# /etc/quantum/neutron.conf
+sudo sed -i "s/# rabbit_host = localhost/rabbit_host = ${CONTROLLER_HOST}/g" /etc/neutron/neutron.conf
+sudo sed -i 's/# auth_strategy = keystone/auth_strategy = keystone/g' /etc/neutron/neutron.conf
+sudo sed -i "s/auth_host = 127.0.0.1/auth_host = ${CONTROLLER_HOST}/g" /etc/neutron/neutron.conf
+sudo sed -i 's/admin_tenant_name = %SERVICE_TENANT_NAME%/admin_tenant_name = service/g' /etc/neutron/neutron.conf
+sudo sed -i 's/admin_user = %SERVICE_USER%/admin_user = quantum/g' /etc/neutron/neutron.conf
+sudo sed -i 's/admin_password = %SERVICE_PASSWORD%/admin_password = quantum/g' /etc/neutron/neutron.conf
+sudo sed -i 's/^root_helper.*/root_helper = sudo/g' /etc/neutron/neutron.conf
+sudo sed -i 's/# allow_overlapping_ips = False/allow_overlapping_ips = True/g' /etc/neutron/neutron.conf
+sudo sed -i "s,^sql_connection.*,sql_connection = mysql://neutron:${MYSQL_NEUTRON_PASS}@${MYSQL_HOST}/neutron," /etc/neutron/neutron.conf
 
 echo "
 Defaults !requiretty
-quantum ALL=(ALL:ALL) NOPASSWD:ALL" | tee -a /etc/sudoers
+neutron ALL=(ALL:ALL) NOPASSWD:ALL" | tee -a /etc/sudoers
 
-# Restart Quantum Services
-service quantum-plugin-openvswitch-agent restart
+# Restart Neutron Services
+service neutron-plugin-openvswitch-agent restart
 
 # Nova Conf
 # Clobber the nova.conf file with the following
@@ -132,21 +133,21 @@ ec2_dmz_host=${MYSQL_HOST}
 ec2_private_dns_show_ip=True
 
 # Network settings
-network_api_class=nova.network.quantumv2.api.API
-quantum_url=http://${CONTROLLER_HOST}:9696
-quantum_auth_strategy=keystone
-quantum_admin_tenant_name=service
-quantum_admin_username=quantum
-quantum_admin_password=quantum
-quantum_admin_auth_url=http://${CONTROLLER_HOST}:35357/v2.0
+network_api_class=nova.network.neutronv2.api.API
+neutron_url=http://${CONTROLLER_HOST}:9696
+neutron_auth_strategy=keystone
+neutron_admin_tenant_name=service
+neutron_admin_username=neutron
+neutron_admin_password=neutron
+neutron_admin_auth_url=http://${CONTROLLER_HOST}:35357/v2.0
 libvirt_vif_driver=nova.virt.libvirt.vif.LibvirtHybridOVSBridgeDriver
 linuxnet_interface_driver=nova.network.linux_net.LinuxOVSInterfaceDriver
 #firewall_driver=nova.virt.libvirt.firewall.IptablesFirewallDriver
-security_group_api=quantum
+security_group_api=neutron
 firewall_driver=nova.virt.firewall.NoopFirewallDriver
 
-service_quantum_metadata_proxy=true
-quantum_metadata_proxy_shared_secret=foo
+service_neutron_metadata_proxy=true
+neutron_metadata_proxy_shared_secret=foo
 
 #Metadata
 #metadata_host = ${CONTROLLER_HOST}
@@ -185,13 +186,13 @@ EOF
   sudo mv /tmp/nova.conf $NOVA_CONF
   sudo chmod 0640 $NOVA_CONF
   sudo chown nova:nova $NOVA_CONF
+  sudo chmod 0644 /boot/vmlinuz*
 
 # Paste file
   sudo sed -i "s/127.0.0.1/'$KEYSTONE_ENDPOINT'/g" $NOVA_API_PASTE
   sudo sed -i "s/%SERVICE_TENANT_NAME%/'service'/g" $NOVA_API_PASTE
   sudo sed -i "s/%SERVICE_USER%/nova/g" $NOVA_API_PASTE
   sudo sed -i "s/%SERVICE_PASSWORD%/'$SERVICE_PASS'/g" $NOVA_API_PASTE
-  sudo nova-manage db sync
 }
 
 nova_restart() {

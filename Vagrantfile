@@ -9,7 +9,7 @@ nodes = {
     'controller'  => [1, 200],
     'compute'  => [1, 201],
     'cinder' => [1, 211],
-    'quantum' => [1, 202],
+    'neutron' => [1, 202],
 #    'client' => [1, 100],
 }
 

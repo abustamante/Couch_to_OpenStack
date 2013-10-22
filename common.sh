@@ -17,7 +17,6 @@ sudo apt-get update
 
 # Grizzly Goodness
 sudo apt-get -y install ubuntu-cloud-keyring
-echo "deb  http://ubuntu-cloud.archive.canonical.com/ubuntu precise-proposed/grizzly main" | sudo tee -a /etc/apt/sources.list.d/grizzly.list
-sudo apt-get update
+echo "deb  http://ubuntu-cloud.archive.canonical.com/ubuntu precise-updates/havana main" | sudo tee -a /etc/apt/sources.list.d/havana.list
+sudo apt-get update && sudo apt-get dist-upgrade -y
 
-#sudo apt-get -y install
