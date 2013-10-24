@@ -127,6 +127,9 @@ keystone service-create --name volume --type volume --description 'Volume Servic
 # OpenStack Compute Nova API Endpoint
 keystone service-create --name nova --type compute --description 'OpenStack Compute Service'
 
+# OpenStack Orchestration Heat API Endpoint
+keystone service-create --name heat --type orchestration --description 'OpenStack Orchestration Service'
+
 # OpenStack Compute EC2 API Endpoint
 keystone service-create --name ec2 --type ec2 --description 'EC2 Service'
 
@@ -143,7 +146,7 @@ PUBLIC="http://$ENDPOINT:5000/v2.0"
 ADMIN="http://$ENDPOINT:35357/v2.0"
 INTERNAL=$PUBLIC
 
-keystone endpoint-create --region RegionOne --service_id $KEYSTONE_SERVICE_ID --publicurl $PUBLIC --adminurl $ADMIN --internalurl $INTERNAL
+keystone endpoint-create --region regionOne --service_id $KEYSTONE_SERVICE_ID --publicurl $PUBLIC --adminurl $ADMIN --internalurl $INTERNAL
 
 # Glance Image Service
 GLANCE_SERVICE_ID=$(keystone service-list | awk '/\ glance\ / {print $2}')
@@ -152,7 +155,7 @@ PUBLIC="http://$ENDPOINT:9292"
 ADMIN=$PUBLIC
 INTERNAL=$PUBLIC
 
-keystone endpoint-create --region RegionOne --service_id $GLANCE_SERVICE_ID --publicurl $PUBLIC --adminurl $ADMIN --internalurl $INTERNAL
+keystone endpoint-create --region regionOne --service_id $GLANCE_SERVICE_ID --publicurl $PUBLIC --adminurl $ADMIN --internalurl $INTERNAL
 
 # OpenStack Compute Nova API
 NOVA_SERVICE_ID=$(keystone service-list | awk '/\ nova\ / {print $2}')
@@ -161,7 +164,7 @@ PUBLIC="http://$ENDPOINT:8774/v2/\$(tenant_id)s"
 ADMIN=$PUBLIC
 INTERNAL=$PUBLIC
 
-keystone endpoint-create --region RegionOne --service_id $NOVA_SERVICE_ID --publicurl $PUBLIC --adminurl $ADMIN --internalurl $INTERNAL
+keystone endpoint-create --region regionOne --service_id $NOVA_SERVICE_ID --publicurl $PUBLIC --adminurl $ADMIN --internalurl $INTERNAL
 
 # OpenStack Compute EC2 API
 EC2_SERVICE_ID=$(keystone service-list | awk '/\ ec2\ / {print $2}')
@@ -170,7 +173,7 @@ PUBLIC="http://$ENDPOINT:8773/services/Cloud"
 ADMIN="http://$ENDPOINT:8773/services/Admin"
 INTERNAL=$PUBLIC
 
-keystone endpoint-create --region RegionOne --service_id $EC2_SERVICE_ID --publicurl $PUBLIC --adminurl $ADMIN --internalurl $INTERNAL
+keystone endpoint-create --region regionOne --service_id $EC2_SERVICE_ID --publicurl $PUBLIC --adminurl $ADMIN --internalurl $INTERNAL
 
 # Cinder Block Storage Service
 CINDER_SERVICE_ID=$(keystone service-list | awk '/\ volume\ / {print $2}')
@@ -180,7 +183,7 @@ PUBLIC="http://$CINDER_ENDPOINT:8776/v1/%(tenant_id)s"
 ADMIN=$PUBLIC
 INTERNAL=$PUBLIC
 
-keystone endpoint-create --region RegionOne --service_id $CINDER_SERVICE_ID --publicurl $PUBLIC --adminurl $ADMIN --internalurl $INTERNAL
+keystone endpoint-create --region regionOne --service_id $CINDER_SERVICE_ID --publicurl $PUBLIC --adminurl $ADMIN --internalurl $INTERNAL
 
 # Neutron Network Service
 NEUTRON_SERVICE_ID=$(keystone service-list | awk '/\ network\ / {print $2}')
@@ -189,8 +192,16 @@ PUBLIC="http://$ENDPOINT:9696/"
 ADMIN=$PUBLIC
 INTERNAL=$PUBLIC
 
-keystone endpoint-create --region RegionOne --service_id $NEUTRON_SERVICE_ID --publicurl $PUBLIC --adminurl $ADMIN --internalurl $INTERNAL
+keystone endpoint-create --region regionOne --service_id $NEUTRON_SERVICE_ID --publicurl $PUBLIC --adminurl $ADMIN --internalurl $INTERNAL
 
+# Heat Orchestration Service
+HEAT_SERVICE_ID=$(keystone service-list | awk '/\ orchestration\ / {print $2}')
+
+PUBLIC="http://$ENDPOINT:8004/v1/%(tenant_id)s"
+ADMIN=$PUBLIC
+INTERNAL=$PUBLIC
+
+keystone endpoint-create --region regionOne --service-id $HEAT_SERVICE_ID --publicurl $PUBLIC --adminurl $ADMIN --internalurl $INTERNAL
 
 # Service Tenant
 keystone tenant-create --name service --description "Service Tenant" --enabled true
@@ -206,12 +217,16 @@ keystone user-create --name cinder --pass cinder --tenant_id $SERVICE_TENANT_ID 
 
 keystone user-create --name neutron --pass neutron --tenant_id $SERVICE_TENANT_ID --email neutron@localhost --enabled true
 
+keystone user-create --name heat --pass heat --tenant_id $SERVICE_TENANT_ID --email heat@localhost --enabled true
+
 # Set user ids
 ADMIN_ROLE_ID=$(keystone role-list | awk '/\ admin\ / {print $2}')
 KEYSTONE_USER_ID=$(keystone user-list | awk '/\ keystone\ / {print $2}')
 GLANCE_USER_ID=$(keystone user-list | awk '/\ glance\ / {print $2}')
 NOVA_USER_ID=$(keystone user-list | awk '/\ nova\ / {print $2}')
 CINDER_USER_ID=$(keystone user-list | awk '/\ cinder \ / {print $2}')
+NEUTRON_USER_ID=$(keystone user-list | awk '/\ neutron \ / {print $2}')
+HEAT_USER_ID=$(keystone user-list | awk '/\ heat \ / {print $2}')
 
 # Assign the keystone user the admin role in service tenant
 keystone user-role-add --user $KEYSTONE_USER_ID --role $ADMIN_ROLE_ID --tenant_id $SERVICE_TENANT_ID
@@ -225,11 +240,11 @@ keystone user-role-add --user $NOVA_USER_ID --role $ADMIN_ROLE_ID --tenant_id $S
 # Assign the cinder user the admin role in service tenant
 keystone user-role-add --user $CINDER_USER_ID --role $ADMIN_ROLE_ID --tenant_id $SERVICE_TENANT_ID
 
-# Create neutron service user in the services tenant
-NEUTRON_USER_ID=$(keystone user-list | awk '/\ neutron \ / {print $2}')
-
 # Grant admin role to neutron service user
 keystone user-role-add --user $NEUTRON_USER_ID --role $ADMIN_ROLE_ID --tenant_id $SERVICE_TENANT_ID
+
+# Assign the heat user the admin role in service tenant
+keystone user-role-add --user $HEAT_USER_ID --role $ADMIN_ROLE_ID --tenant_id $SERVICE_TENANT_ID
 
 ###############################
 # Glance Install
@@ -417,7 +432,7 @@ tunnel_bridge=br-tun
 enable_tunneling=True
 [SECURITYGROUP]
 # Firewall driver for realizing neutron security group function
-firewall_driver = neutron.agent.linux.iptables_firewall.OVSHybridIptablesFirewallDriver
+firewall_driver=nova.virt.firewall.NoopFirewallDriver
 " | sudo tee -a /etc/neutron/plugins/openvswitch/ovs_neutron_plugin.ini
 
 # Configure Neutron
@@ -429,7 +444,7 @@ sudo sed -i 's/admin_user = %SERVICE_USER%/admin_user = neutron/g' /etc/neutron/
 sudo sed -i 's/admin_password = %SERVICE_PASSWORD%/admin_password = neutron/g' /etc/neutron/neutron.conf
 sudo sed -i 's/^root_helper.*/root_helper = sudo/g' /etc/neutron/neutron.conf
 sudo sed -i 's/# allow_overlapping_ips = False/allow_overlapping_ips = True/g' /etc/neutron/neutron.conf
-sudo sed -i "s,^sql_connection.*,sql_connection = mysql://neutron:${MYSQL_NEUTRON_PASS}@${MYSQL_HOST}/neutron," /etc/neutron/neutron.conf
+sudo sed -i "s,^connection.*,connection = mysql://neutron:${MYSQL_NEUTRON_PASS}@${MYSQL_HOST}/neutron," /etc/neutron/neutron.conf
 
 sudo echo "
 Defaults !requiretty
@@ -577,6 +592,123 @@ MYSQL_CINDER_PASS=openstack
 mysql -uroot -p$MYSQL_ROOT_PASS -e 'CREATE DATABASE cinder;'
 mysql -uroot -p$MYSQL_ROOT_PASS -e "GRANT ALL PRIVILEGES ON cinder.* TO 'cinder'@'%';"
 mysql -uroot -p$MYSQL_ROOT_PASS -e "SET PASSWORD FOR 'cinder'@'%' = PASSWORD('$MYSQL_CINDER_PASS');"
+
+###############################
+# Heat Installation
+###############################
+
+sudo apt-get install -y heat-api heat-api-cfn 
+sudo apt-get install -y heat-engine
+
+MYSQL_ROOT_PASS=openstack
+MYSQL_HEAT_PASS=openstack
+mysql -uroot -p$MYSQL_ROOT_PASS -e 'CREATE DATABASE heat;'
+mysql -uroot -p$MYSQL_ROOT_PASS -e "GRANT ALL PRIVILEGES ON heat.* TO 'heat'@'%'"
+mysql -uroot -p$MYSQL_ROOT_PASS -e "SET PASSWORD FOR 'heat'@'%' = PASSWORD('$MYSQL_HEAT_PASS');"
+
+rm -f /etc/heat/api-paste.ini
+echo "
+# heat-api pipeline
+[pipeline:heat-api]
+pipeline = faultwrap versionnegotiation authtoken context apiv1app
+
+# heat-api pipeline for standalone heat
+# ie. uses alternative auth backend that authenticates users against keystone
+# using username and password instead of validating token (which requires
+# an admin/service token).
+# To enable, in heat.conf:
+#   [paste_deploy]
+#   flavor = standalone
+#
+[pipeline:heat-api-standalone]
+pipeline = faultwrap versionnegotiation authpassword context apiv1app
+
+# heat-api pipeline for custom cloud backends
+# i.e. in heat.conf:
+#   [paste_deploy]
+#   flavor = custombackend
+#
+[pipeline:heat-api-custombackend]
+pipeline = faultwrap versionnegotiation context custombackendauth apiv1app
+
+# heat-api-cfn pipeline
+[pipeline:heat-api-cfn]
+pipeline = cfnversionnegotiation ec2authtoken authtoken context apicfnv1app
+
+# heat-api-cfn pipeline for standalone heat
+# relies exclusively on authenticating with ec2 signed requests
+[pipeline:heat-api-cfn-standalone]
+pipeline = cfnversionnegotiation ec2authtoken context apicfnv1app
+
+# heat-api-cloudwatch pipeline
+[pipeline:heat-api-cloudwatch]
+pipeline = versionnegotiation ec2authtoken authtoken context apicwapp
+
+# heat-api-cloudwatch pipeline for standalone heat
+# relies exclusively on authenticating with ec2 signed requests
+[pipeline:heat-api-cloudwatch-standalone]
+pipeline = versionnegotiation ec2authtoken context apicwapp
+
+[app:apiv1app]
+paste.app_factory = heat.common.wsgi:app_factory
+heat.app_factory = heat.api.openstack.v1:API
+
+[app:apicfnv1app]
+paste.app_factory = heat.common.wsgi:app_factory
+heat.app_factory = heat.api.cfn.v1:API
+
+[app:apicwapp]
+paste.app_factory = heat.common.wsgi:app_factory
+heat.app_factory = heat.api.cloudwatch:API
+
+[filter:versionnegotiation]
+paste.filter_factory = heat.common.wsgi:filter_factory
+heat.filter_factory = heat.api.openstack:version_negotiation_filter
+
+[filter:faultwrap]
+paste.filter_factory = heat.common.wsgi:filter_factory
+heat.filter_factory = heat.api.openstack:faultwrap_filter
+
+[filter:cfnversionnegotiation]
+paste.filter_factory = heat.common.wsgi:filter_factory
+heat.filter_factory = heat.api.cfn:version_negotiation_filter
+
+[filter:cwversionnegotiation]
+paste.filter_factory = heat.common.wsgi:filter_factory
+heat.filter_factory = heat.api.cloudwatch:version_negotiation_filter
+
+[filter:context]
+paste.filter_factory = heat.common.context:ContextMiddleware_filter_factory
+
+[filter:ec2authtoken]
+paste.filter_factory = heat.api.aws.ec2token:EC2Token_filter_factory
+
+# Auth middleware that validates token against keystone
+[filter:authtoken]
+paste.filter_factory = heat.common.auth_token:filter_factory
+auth_host = $ENDPOINT
+auth_port = 35357
+auth_protocol = http
+admin_tenant_name = service
+admin_user = heat
+admin_password = heat
+
+# Auth middleware that validates username/password against keystone
+[filter:authpassword]
+paste.filter_factory = heat.common.auth_password:filter_factory
+
+# Auth middleware that validates against custom backend
+[filter:custombackendauth]
+paste.filter_factory = heat.common.custom_backend_auth:filter_factory" | sudo tee -a /etc/heat/api-paste.ini
+
+sudo sed -i "s,^sql_connection.*,sql_connection = mysql://heat:${MYSQL_HEAT_PASS}@${MYSQL_HOST}/heat," /etc/heat/heat.conf
+
+sudo service heat-api restart
+sudo service heat-api-cfn restart
+sudo service heat-engine restart
+
+heat-manage db_sync
+
 
 ###############################
 # Everyone loves Horizon dashboard

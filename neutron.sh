@@ -75,7 +75,7 @@ paste.app_factory = neutron.api.versions:Versions.factory
 
 [app:neutronapiapp_v2_0]
 paste.app_factory = neutron.api.v2.router:APIRouter.factory
-" | tee -a /etc/neutron/api-paste.ini
+" | sudo tee -a /etc/neutron/api-paste.ini
 
 # /etc/neutron/plugins/openvswitch/ovs_neutron_plugin.ini
 echo "
@@ -91,7 +91,7 @@ enable_tunneling=True
 root_helper = sudo /usr/bin/neutron-rootwrap /etc/neutron/rootwrap.conf
 [SECURITYGROUP]
 # Firewall driver for realizing neutron security group function
-firewall_driver = neutron.agent.linux.iptables_firewall.OVSHybridIptablesFirewallDriver
+firewall_driver=nova.virt.firewall.NoopFirewallDriver
 " | tee -a /etc/neutron/plugins/openvswitch/ovs_neutron_plugin.ini
 
 # /etc/neutron/dhcp_agent.ini 
@@ -115,35 +115,118 @@ sudo sed -i 's/admin_user = %SERVICE_USER%/admin_user = neutron/g' /etc/neutron/
 sudo sed -i 's/admin_password = %SERVICE_PASSWORD%/admin_password = neutron/g' /etc/neutron/neutron.conf
 sudo sed -i 's/^root_helper.*/root_helper = sudo/g' /etc/neutron/neutron.conf
 sudo sed -i 's/# allow_overlapping_ips = False/allow_overlapping_ips = True/g' /etc/neutron/neutron.conf
-sudo sed -i "s,^sql_connection.*,sql_connection = mysql://neutron:openstack@${CONTROLLER_HOST}/neutron," /etc/neutron/neutron.conf
-
-# Restart Neutron Services
-service neutron-plugin-openvswitch-agent restart
-
-
+sudo sed -i "s,^connection.*,connection = mysql://neutron:openstack@${CONTROLLER_HOST}/neutron," /etc/neutron/neutron.conf
+sudo sed -i "s,^sql_connection.*,sql_connection = mysql://neutron:openstack@${CONTROLLER_HOST}/neutron," /etc/neutron/dhcp_agent.ini
+sudo sed -i "s/# interface_driver = neutron.agent.linux.interface.OVSInterfaceDriver/interface_driver = neutron.agent.linux.interface.OVSInterfaceDriver/g" /etc/neutron/l3_agent.ini
 
 # /etc/neutron/l3_agent.ini
+sudo rm -rf /etc/neutron/l3_agent.ini
 echo "
+[DEFAULT]
+# Show debugging output in log (sets DEBUG log level output)
+# debug = False
+
+# L3 requires that an interface driver be set. Choose the one that best
+# matches your plugin.
+# interface_driver =
+
+# Example of interface_driver option for OVS based plugins (OVS, Ryu, NEC)
+# that supports L3 agent
+interface_driver = neutron.agent.linux.interface.OVSInterfaceDriver
+
+# Use veth for an OVS interface or not.
+# Support kernels with limited namespace support
+# (e.g. RHEL 6.5) so long as ovs_use_veth is set to True.
+# ovs_use_veth = False
+
+# Example of interface_driver option for LinuxBridge
+# interface_driver = neutron.agent.linux.interface.BridgeInterfaceDriver
+
+# Allow overlapping IP (Must have kernel build with CONFIG_NET_NS=y and
+# iproute2 package that supports namespaces).
+# use_namespaces = True
+
+# If use_namespaces is set as False then the agent can only configure one router.
+
+# This is done by setting the specific router_id.
+# router_id =
+
+# Each L3 agent can be associated with at most one external network.  This
+# value should be set to the UUID of that external network.  If empty,
+# the agent will enforce that only a single external networks exists and
+# use that external network id
+# gateway_external_network_id =
+
+# Indicates that this L3 agent should also handle routers that do not have
+# an external network gateway configured.  This option should be True only
+# for a single agent in a Neutron deployment, and may be False for all agents
+# if all routers must have an external network gateway
+# handle_internal_only_routers = True
+
+# Name of bridge used for external network traffic. This should be set to
+# empty value for the linux bridge
+# external_network_bridge = br-ex
+
+# TCP Port used by Neutron metadata server
+# metadata_port = 9697
+
+# Send this many gratuitous ARPs for HA setup. Set it below or equal to 0
+# to disable this feature.
+# send_arp_for_ha = 3
+
+# seconds between re-sync routers' data if needed
+# periodic_interval = 40
+
+# seconds to start to sync routers' data after
+# starting agent
+# periodic_fuzzy_delay = 5
+
+# enable_metadata_proxy, which is true by default, can be set to False
+# if the Nova metadata server is not available
+# enable_metadata_proxy = True
+
+# Location of Metadata Proxy UNIX domain socket
+# metadata_proxy_socket = $state_path/metadata_proxy
+
 auth_url = http://${CONTROLLER_HOST}:35357/v2.0
-auth_region = RegionOne
+auth_region = regionOne
 admin_tenant_name = service
 admin_user = neutron
 admin_password = neutron
 metadata_ip = ${CONTROLLER_HOST}
 metadata_port = 8775
-use_namespaces = True" | tee -a /etc/neutron/l3_agent.ini
+use_namespaces = True
+" | sudo tee -a /etc/neutron/l3_agent.ini
 
 # Metadata Agent
+
+sudo rm -rf /etc/neutron/metadata_agent.ini
 echo "[DEFAULT]
-auth_url = http://${CONTROLLER_HOST}:35357/v2.0
-auth_region = RegionOne
+# Show debugging output in log (sets DEBUG log level output)
+# debug = True
+
+# The Neutron user information for accessing the Neutron API.
+auth_url = http://${CONTROLLER_HOST}:5000/v2.0
+auth_region = regionOne
 admin_tenant_name = service
 admin_user = neutron
 admin_password = neutron
-metadata_proxy_shared_secret = foo
+
+# Network service endpoint type to pull from the keystone catalog
+# endpoint_type = adminURL
+
+# IP address used by Nova metadata server
 nova_metadata_ip = ${CONTROLLER_HOST}
+
+# TCP Port used by Nova metadata server
 nova_metadata_port = 8775
-" | tee -a /etc/neutron/metadata_agent.ini
+
+# When proxying metadata requests, Neutron signs the Instance-ID header with a
+# shared secret to prevent spoofing.  You may select any string for a secret,
+# but it must match here and in the configuration used by the Nova Metadata
+# Server. NOTE: Nova uses a different key: neutron_metadata_proxy_shared_secret
+metadata_proxy_shared_secret = foo
+" | sudo tee -a /etc/neutron/metadata_agent.ini
 
 sudo service neutron-plugin-openvswitch-agent restart
 sudo service neutron-dhcp-agent restart

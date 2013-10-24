@@ -5,6 +5,9 @@ MY_IP=$(ifconfig eth1 | awk '/inet addr/ {split ($2,A,":"); print A[2]}')
 # Install squid
 export DEBIAN_FRONTEND=noninteractive
 apt-get update && sudo apt-get install ubuntu-cloud-keyring apt-cacher-ng -y
+sudo cp -R /vagrant/apt-cacher-ng/* /var/cache/apt-cacher-ng/
+sudo chown -R apt-cacher-ng:apt-cacher-ng /var/cache/apt-cacher-ng/
+sudo service apt-cacher-ng restart
 
 # Setup our repo's
 sudo apt-get install python-software-properties -y
