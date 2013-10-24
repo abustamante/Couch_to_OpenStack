@@ -432,7 +432,7 @@ tunnel_bridge=br-tun
 enable_tunneling=True
 [SECURITYGROUP]
 # Firewall driver for realizing neutron security group function
-firewall_driver=nova.virt.firewall.NoopFirewallDriver
+firewall_driver = neutron.agent.linux.iptables_firewall.OVSHybridIptablesFirewallDriver
 " | sudo tee -a /etc/neutron/plugins/openvswitch/ovs_neutron_plugin.ini
 
 # Configure Neutron

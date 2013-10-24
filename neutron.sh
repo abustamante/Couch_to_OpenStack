@@ -91,7 +91,7 @@ enable_tunneling=True
 root_helper = sudo /usr/bin/neutron-rootwrap /etc/neutron/rootwrap.conf
 [SECURITYGROUP]
 # Firewall driver for realizing neutron security group function
-firewall_driver=nova.virt.firewall.NoopFirewallDriver
+firewall_driver = quantum.agent.linux.iptables_firewall.OVSHybridIptablesFirewallDriver
 " | tee -a /etc/neutron/plugins/openvswitch/ovs_neutron_plugin.ini
 
 # /etc/neutron/dhcp_agent.ini 
@@ -227,6 +227,88 @@ nova_metadata_port = 8775
 # Server. NOTE: Nova uses a different key: neutron_metadata_proxy_shared_secret
 metadata_proxy_shared_secret = foo
 " | sudo tee -a /etc/neutron/metadata_agent.ini
+
+#DHCP Agent
+
+sudo rm -rf /etc/neutron/dhcp_agent.ini
+echo "[DEFAULT]
+# Show debugging output in log (sets DEBUG log level output)
+# debug = False
+
+# The DHCP agent will resync its state with Neutron to recover from any
+# transient notification or rpc errors. The interval is number of
+# seconds between attempts.
+# resync_interval = 5
+
+# The DHCP agent requires an interface driver be set. Choose the one that best
+# matches your plugin.
+# interface_driver =
+
+# Example of interface_driver option for OVS based plugins(OVS, Ryu, NEC, NVP,
+# BigSwitch/Floodlight)
+interface_driver = neutron.agent.linux.interface.OVSInterfaceDriver
+
+# Use veth for an OVS interface or not.
+# Support kernels with limited namespace support
+# (e.g. RHEL 6.5) so long as ovs_use_veth is set to True.
+# ovs_use_veth = False
+
+# Example of interface_driver option for LinuxBridge
+# interface_driver = neutron.agent.linux.interface.BridgeInterfaceDriver
+
+# The agent can use other DHCP drivers.  Dnsmasq is the simplest and requires
+# no additional setup of the DHCP server.
+dhcp_driver = neutron.agent.linux.dhcp.Dnsmasq
+
+# Allow overlapping IP (Must have kernel build with CONFIG_NET_NS=y and
+# iproute2 package that supports namespaces).
+use_namespaces = True
+
+# The DHCP server can assist with providing metadata support on isolated
+# networks. Setting this value to True will cause the DHCP server to append
+# specific host routes to the DHCP request.  The metadata service will only
+# be activated when the subnet gateway_ip is None.  The guest instance must
+# be configured to request host routes via DHCP (Option 121).
+enable_isolated_metadata = True
+
+# Allows for serving metadata requests coming from a dedicated metadata
+# access network whose cidr is 169.254.169.254/16 (or larger prefix), and
+# is connected to a Neutron router from which the VMs send metadata
+# request. In this case DHCP Option 121 will not be injected in VMs, as
+# they will be able to reach 169.254.169.254 through a router.
+# This option requires enable_isolated_metadata = True
+# enable_metadata_network = False
+
+# Number of threads to use during sync process. Should not exceed connection
+# pool size configured on server.
+# num_sync_threads = 4
+
+# Location to store DHCP server config files
+# dhcp_confs = $state_path/dhcp
+
+# Domain to use for building the hostnames
+# dhcp_domain = openstacklocal
+
+# Override the default dnsmasq settings with this file
+# dnsmasq_config_file =
+
+# Use another DNS server before any in /etc/resolv.conf.
+# dnsmasq_dns_server =
+
+# Limit number of leases to prevent a denial-of-service.
+# dnsmasq_lease_max = 16777216
+
+# Location to DHCP lease relay UNIX domain socket
+# dhcp_lease_relay_socket = $state_path/dhcp/lease_relay
+
+# Location of Metadata Proxy UNIX domain socket
+# metadata_proxy_socket = $state_path/metadata_proxy
+
+#Custom MTU value to support GRE tunneling within 1500MTU max
+dnsmasq_config_file=/etc/neutron/dnsmasq-neutron.conf
+" | sudo tee -a /etc/neutron/dhcp_agent.ini
+
+echo "dhcp-option-force=26,1400" | sudo tee -a /etc/neutron/dnsmasq-neutron.conf
 
 sudo service neutron-plugin-openvswitch-agent restart
 sudo service neutron-dhcp-agent restart

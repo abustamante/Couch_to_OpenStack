@@ -70,7 +70,7 @@ enable_tunneling=True
 root_helper = sudo /usr/bin/neutron-rootwrap /etc/neutron/rootwrap.conf
 [SECURITYGROUP]
 # Firewall driver for realizing quantum security group function
-firewall_driver=nova.virt.firewall.NoopFirewallDriver
+firewall_driver = quantum.agent.linux.iptables_firewall.OVSHybridIptablesFirewallDriver
 " | sudo tee -a /etc/neutron/plugins/openvswitch/ovs_neutron_plugin.ini
 
 # Replace /etc/neutron/api-paste.ini file with the following:
