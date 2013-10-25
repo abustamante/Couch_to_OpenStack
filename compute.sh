@@ -162,6 +162,11 @@ ec2_host=${MYSQL_HOST}
 ec2_dmz_host=${MYSQL_HOST}
 ec2_private_dns_show_ip=True
 
+# VNC Settings
+my_ip=${MY_IP}
+vncserver_listen=0.0.0.0
+vncserver_proxyclient_address=${MY_IP}
+
 # Network settings
 network_api_class=nova.network.neutronv2.api.API
 neutron_url=http://${CONTROLLER_HOST}:9696

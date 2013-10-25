@@ -10,6 +10,7 @@ nodes = {
     'compute'  => [1, 201],
     'cinder' => [1, 211],
     'neutron' => [1, 202],
+    'swift' => [1,220],
 #    'client' => [1, 100],
 }
 
@@ -78,9 +79,12 @@ Vagrant.configure("2") do |config|
               vbox.customize ["modifyvm", :id, "--nicpromisc4", "allow-all"]
             elsif prefix == "client" or prefix == "proxy"
               vbox.customize ["modifyvm", :id, "--memory", 512]
-	    elsif prefix == "neutron"
+	        elsif prefix == "neutron"
               vbox.customize ["modifyvm", :id, "--nicpromisc4", "allow-all"]
-            end
+            elsif prefix == "swift"
+              vbox.customize ["createhd", "--filename", "switft_disk_2.vdi", "--size", 2000 * 1024]
+              vbox.customize ["storageattach", :id, "--storagectl", "SATA Controller", "--port", 1, "--device", 0, "--type","hdd", "--medium","swift_disk_2.vdi"]
+           end
           end  
         end
       end
