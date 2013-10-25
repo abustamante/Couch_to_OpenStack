@@ -78,7 +78,7 @@ Vagrant.configure("2") do |config|
               vbox.customize ["modifyvm", :id, "--nicpromisc4", "allow-all"]
             elsif prefix == "client" or prefix == "proxy"
               vbox.customize ["modifyvm", :id, "--memory", 512]
-	    elsif prefix == "quantum"
+	    elsif prefix == "neutron"
               vbox.customize ["modifyvm", :id, "--nicpromisc4", "allow-all"]
             end
           end  
