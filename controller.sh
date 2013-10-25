@@ -18,6 +18,7 @@ sudo apt-get update
 # Grizzly Goodness
 sudo apt-get -y install ubuntu-cloud-keyring
 echo "deb  http://ubuntu-cloud.archive.canonical.com/ubuntu precise-updates/havana main" | sudo tee -a /etc/apt/sources.list.d/havana.list
+echo "grub-pc	grub-pc/install_devices	multiselect	/dev/sda" | sudo debconf-set-selections
 sudo apt-get update && sudo apt-get dist-upgrade -y
 
 MY_IP=$(ifconfig eth1 | awk '/inet addr/ {split ($2,A,":"); print A[2]}')
