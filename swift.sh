@@ -10,10 +10,10 @@ OSC_PRIV_IP=${CONTROLLER_HOST_PRIV}
 # Must define your environment
 MYSQL_HOST=${CONTROLLER_HOST}
 GLANCE_HOST=${CONTROLLER_HOST}
-
+SWIFT_HASH=changeme #you should likely change this to something more secure
 
 sudo apt-get install -y curl gcc memcached rsync sqlite3 xfsprogs git-core libffi-dev python-setuptools
-sudo apt-get install -y python-coverage python-dev python-nose python-simplejson python-xattr python-eventlet python-greenlet python-pastedeploy python-netifaces python-pip python-dnspython python-mock
+sudo apt-get install -y python-coverage python-dev python-nose python-simplejson python-xattr python-eventlet python-greenlet python-keystoneclient python-pastedeploy python-netifaces python-pip python-dnspython python-mock
 
 
 echo "n
@@ -41,7 +41,7 @@ echo "uid = vagrant
 gid = vagrant
 log file = /var/log/rsyncd.log
 pid file = /var/run/rsyncd.pid
-address = 127.0.0.1
+address = ${MY_IP}
 
 [account6012]
 max connections = 25
@@ -169,29 +169,50 @@ echo "
 [DEFAULT]
 bind_port = 8080
 workers = 1
-user = <your-user-name>
+user = vagrant
 log_facility = LOG_LOCAL1
 eventlet_debug = true
 
 [pipeline:main]
 # Yes, proxy-logging appears twice. This is not a mistake.
-pipeline = healthcheck proxy-logging cache tempauth proxy-logging proxy-server
+pipeline = healthcheck proxy-logging cache authtoken keystoneauth proxy-logging proxy-server
 
 [app:proxy-server]
 use = egg:swift#proxy
 allow_account_management = true
 account_autocreate = true
 
-[filter:tempauth]
-use = egg:swift#tempauth
-user_admin_admin = admin .admin .reseller_admin
-user_test_tester = testing .admin
-user_test2_tester2 = testing2 .admin
-user_test_tester3 = testing3
+###tempauth is a testing mechanism and should not be enabled in production environments
+#[filter:tempauth]
+#use = egg:swift#tempauth
+#user_admin_admin = admin .admin .reseller_admin
+#user_test_tester = testing .admin
+#user_test2_tester2 = testing2 .admin
+#user_test_tester3 = testing3
 
 [filter:healthcheck]
 use = egg:swift#healthcheck
 
+[filter:authtoken]
+paste.filter_factory = keystoneclient.middleware.auth_token:filter_factory
+auth_host = ${CONTROLLER_HOST}
+auth_port = 35357
+auth_protocol = http
+auth_uri = http://${CONTROLLER_HOST}:5000/
+admin_tenant_name = service
+admin_user = swift
+admin_password = swift
+delay_auth_decision = 1
+cache = swift.cache
+#
+[filter:keystoneauth]
+use = egg:swift#keystoneauth
+# Operator roles is the role which user would be allowed to manage a
+# tenant and be able to create container or give ACL to others.
+operator_roles = admin, swiftoperator
+# The reseller admin role has the ability to create and delete accounts
+#reseller_admin_role = ResellerAdmin
+ 
 [filter:cache]
 use = egg:swift#memcache
 
@@ -201,8 +222,8 @@ use = egg:swift#proxy_logging" | sudo tee -a /etc/swift/proxy-server.conf
 sudo rm -rf /etc/swift/swift.conf
 echo "[swift-hash]
 # random unique strings that can never change (DO NOT LOSE)
-swift_hash_path_prefix = changeme
-swift_hash_path_suffix = changeme" | sudo tee -a /etc/swift/swift.conf
+swift_hash_path_prefix = ${SWIFT_HASH}
+swift_hash_path_suffix = ${SWIFT_HASH}" | sudo tee -a /etc/swift/swift.conf
 
 sudo rm -rf /etc/swift/account-server/1.conf
 echo "
@@ -576,22 +597,22 @@ cd /etc/swift
 rm -f *.builder *.ring.gz backups/*.builder backups/*.ring.gz
 
 swift-ring-builder object.builder create 10 3 1
-swift-ring-builder object.builder add r1z1-127.0.0.1:6010/sdb1 1
-swift-ring-builder object.builder add r1z2-127.0.0.1:6020/sdb2 1
-swift-ring-builder object.builder add r1z3-127.0.0.1:6030/sdb3 1
-swift-ring-builder object.builder add r1z4-127.0.0.1:6040/sdb4 1
+swift-ring-builder object.builder add r1z1-${MY_IP}:6010/sdb1 1
+swift-ring-builder object.builder add r1z2-${MY_IP}:6020/sdb2 1
+swift-ring-builder object.builder add r1z3-${MY_IP}:6030/sdb3 1
+swift-ring-builder object.builder add r1z4-${MY_IP}:6040/sdb4 1
 swift-ring-builder object.builder rebalance
 swift-ring-builder container.builder create 10 3 1
-swift-ring-builder container.builder add r1z1-127.0.0.1:6011/sdb1 1
-swift-ring-builder container.builder add r1z2-127.0.0.1:6021/sdb2 1
-swift-ring-builder container.builder add r1z3-127.0.0.1:6031/sdb3 1
-swift-ring-builder container.builder add r1z4-127.0.0.1:6041/sdb4 1
+swift-ring-builder container.builder add r1z1-${MY_IP}:6011/sdb1 1
+swift-ring-builder container.builder add r1z2-${MY_IP}:6021/sdb2 1
+swift-ring-builder container.builder add r1z3-${MY_IP}:6031/sdb3 1
+swift-ring-builder container.builder add r1z4-${MY_IP}:6041/sdb4 1
 swift-ring-builder container.builder rebalance
 swift-ring-builder account.builder create 10 3 1
-swift-ring-builder account.builder add r1z1-127.0.0.1:6012/sdb1 1
-swift-ring-builder account.builder add r1z2-127.0.0.1:6022/sdb2 1
-swift-ring-builder account.builder add r1z3-127.0.0.1:6032/sdb3 1
-swift-ring-builder account.builder add r1z4-127.0.0.1:6042/sdb4 1
+swift-ring-builder account.builder add r1z1-${MY_IP}:6012/sdb1 1
+swift-ring-builder account.builder add r1z2-${MY_IP}:6022/sdb2 1
+swift-ring-builder account.builder add r1z3-${MY_IP}:6032/sdb3 1
+swift-ring-builder account.builder add r1z4-${MY_IP}:6042/sdb4 1
 swift-ring-builder account.builder rebalance" | sudo tee -a ~/bin/remakerings
 
 echo "#!/bin/bash
@@ -606,8 +627,6 @@ chmod +x ~/bin/*
 echo "export SWIFT_TEST_CONFIG_FILE=/etc/swift/test.conf
 export PATH=${PATH}:~/bin" | sudo tee -a ~/.bashrc
 
-~/.bashrc
-~/bin/remakerings
-cp ~/swift/test/sample.conf /etc/swift/test.conf
-~/swift/.unittests
-startmain
+sudo ~/.bashrc
+sudo ~/bin/remakerings
+sudo startmain

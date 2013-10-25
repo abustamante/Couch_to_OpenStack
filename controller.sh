@@ -134,6 +134,9 @@ keystone service-create --name heat --type orchestration --description 'OpenStac
 # OpenStack Compute EC2 API Endpoint
 keystone service-create --name ec2 --type ec2 --description 'EC2 Service'
 
+# OpenStack Swift Object Storage Endpoint
+keystone service-create --name swift --type object-store --description 'OpenStack Object Storage Service'
+
 # Keystone Identity Service Endpoint
 keystone service-create --name keystone --type identity --description 'OpenStack Identity Service'
 
@@ -186,6 +189,16 @@ INTERNAL=$PUBLIC
 
 keystone endpoint-create --region regionOne --service_id $CINDER_SERVICE_ID --publicurl $PUBLIC --adminurl $ADMIN --internalurl $INTERNAL
 
+# Swift Object Storage Service
+SWIFT_SERVICE_ID=$(keystone service-list | awk '/\ object-store\ / {print $2}')
+SWIFT_ENDPOINT=$(echo $OSCONTROLLER | sed 's/\.[0-9]*$/.220/') #Change last octet of OpenStack Controller IP to the Swift IP.  If you changed the Swift IP's last octet, then change the .220 in this sed command
+
+PUBLIC="http://$SWIFT_ENDPOINT:8080/v1/%(tenant_id)s" 
+ADMIN="http://$SWIFT_ENDPOINT:8080/"
+INTERNAL=$PUBLIC
+
+keystone endpoint-create --region regionOne --service_id $SWIFT_SERVICE_ID --publicurl $PUBLIC --adminurl $ADMIN --internalurl $INTERNAL
+
 # Neutron Network Service
 NEUTRON_SERVICE_ID=$(keystone service-list | awk '/\ network\ / {print $2}')
 
@@ -220,6 +233,8 @@ keystone user-create --name neutron --pass neutron --tenant_id $SERVICE_TENANT_I
 
 keystone user-create --name heat --pass heat --tenant_id $SERVICE_TENANT_ID --email heat@localhost --enabled true
 
+keystone user-create --name swift --pass swift --tenant_id $SERVICE_TENANT_ID --email swift@localhost --enabled true
+
 # Set user ids
 ADMIN_ROLE_ID=$(keystone role-list | awk '/\ admin\ / {print $2}')
 KEYSTONE_USER_ID=$(keystone user-list | awk '/\ keystone\ / {print $2}')
@@ -228,6 +243,7 @@ NOVA_USER_ID=$(keystone user-list | awk '/\ nova\ / {print $2}')
 CINDER_USER_ID=$(keystone user-list | awk '/\ cinder \ / {print $2}')
 NEUTRON_USER_ID=$(keystone user-list | awk '/\ neutron \ / {print $2}')
 HEAT_USER_ID=$(keystone user-list | awk '/\ heat \ / {print $2}')
+SWIFT_USER_ID=$(keystone user-list | awk '/\ swift \ / {print $2}')
 
 # Assign the keystone user the admin role in service tenant
 keystone user-role-add --user $KEYSTONE_USER_ID --role $ADMIN_ROLE_ID --tenant_id $SERVICE_TENANT_ID
@@ -246,6 +262,9 @@ keystone user-role-add --user $NEUTRON_USER_ID --role $ADMIN_ROLE_ID --tenant_id
 
 # Assign the heat user the admin role in service tenant
 keystone user-role-add --user $HEAT_USER_ID --role $ADMIN_ROLE_ID --tenant_id $SERVICE_TENANT_ID
+
+# Assign the swift user the admin role in service tenant
+keystone user-role-add --user $SWIFT_USER_ID --role $ADMIN_ROLE_ID --tenant_id $SERVICE_TENANT_ID
 
 ###############################
 # Glance Install
