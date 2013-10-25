@@ -71,18 +71,18 @@ Vagrant.configure("2") do |config|
           # If using VirtualBox
           box.vm.provider :virtualbox do |vbox|
 	  # Defaults
-            vbox.customize ["modifyvm", :id, "--memory", 1024]
+            vbox.customize ["modifyvm", :id, "--memory", 768]
             vbox.customize ["modifyvm", :id, "--cpus", 1]
             if prefix == "compute"
               vbox.customize ["modifyvm", :id, "--memory", 2048]
               vbox.customize ["modifyvm", :id, "--cpus", 2]
               vbox.customize ["modifyvm", :id, "--nicpromisc4", "allow-all"]
             elsif prefix == "client" or prefix == "proxy"
-              vbox.customize ["modifyvm", :id, "--memory", 512]
+              vbox.customize ["modifyvm", :id, "--memory", 384]
 	        elsif prefix == "neutron"
               vbox.customize ["modifyvm", :id, "--nicpromisc4", "allow-all"]
             elsif prefix == "swift"
-              vbox.customize ["createhd", "--filename", "switft_disk_2.vdi", "--size", 2000 * 1024]
+              vbox.customize ["createhd", "--filename", "swift_disk_2.vdi", "--size", 2000 * 1024]
               vbox.customize ["storageattach", :id, "--storagectl", "SATA Controller", "--port", 1, "--device", 0, "--type","hdd", "--medium","swift_disk_2.vdi"]
            end
           end  
