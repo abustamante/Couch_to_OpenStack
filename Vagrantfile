@@ -5,13 +5,10 @@ require 'securerandom'
 # remove the 'client' entry to below to save on host resources
 nodes = {
     'proxy' => [1,10],
-#    'scalr' => [1,15],
     'controller'  => [1, 200],
     'compute'  => [1, 201],
     'cinder' => [1, 211],
     'neutron' => [1, 202],
-    'swift' => [1,220],
-#    'client' => [1, 100],
 }
 
 
