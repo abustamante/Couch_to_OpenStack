@@ -16,10 +16,10 @@ export OSCONTROLLER_P=$OSC_PRIV_IP
 nova_compute_install() {
 
 	# Install some packages:
-	sudo apt-get -y install vim vlan bridge-utils
-	sudo apt-get -y install libvirt-bin pm-utils sysfsutils
+	sudo apt-get -y --force-yes install vim vlan bridge-utils
+	sudo apt-get -y --force-yes install libvirt-bin pm-utils sysfsutils
 	sudo service ntp restart
-	sudo apt-get -y install nova-compute-qemu nova-doc
+	sudo apt-get -y --force-yes install nova-compute-qemu nova-doc
 
 }
 
@@ -35,8 +35,8 @@ sysctl net.ipv4.ip_forward=1
 sudo service libvirt-bin restart
 
 # OpenVSwitch
-sudo apt-get -y install linux-headers-`uname -r` build-essential
-sudo apt-get -y install openvswitch-switch openvswitch-datapath-dkms
+sudo apt-get -y --force-yes install linux-headers-`uname -r` build-essential
+sudo apt-get -y --force-yes install openvswitch-switch openvswitch-datapath-dkms
 
 # Make the bridge br-int, used for VM integration
 sudo ovs-vsctl add-br br-int
@@ -166,6 +166,7 @@ ec2_private_dns_show_ip=True
 my_ip=${MY_IP}
 vncserver_listen=0.0.0.0
 vncserver_proxyclient_address=${MY_IP}
+novncproxy_base_url=http://$(CONTROLLER_HOST}:6080/vnc_auto.html
 
 # Network settings
 network_api_class=nova.network.neutronv2.api.API
