@@ -644,10 +644,10 @@ operator_roles = admin, swiftoperator
 " | sudo tee -a /etc/swift/proxy-server.conf
 
 cd /etc/swift
-cd /etc/swift
 sudo swift-ring-builder account.builder create 18 3 1
 sudo swift-ring-builder container.builder create 18 3 1
 sudo swift-ring-builder object.builder create 18 3 1
+
 
 for i in {1..5}; do sudo swift-ring-builder object.builder add z$i-10.10.80.20$i:6000/r0 100;done
 for i in {1..5}; do sudo swift-ring-builder container.builder add z$i-10.10.80.20$i:6001/r0 100;done
