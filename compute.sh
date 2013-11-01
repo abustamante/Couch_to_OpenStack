@@ -166,7 +166,7 @@ ec2_private_dns_show_ip=True
 my_ip=${MY_IP}
 vncserver_listen=0.0.0.0
 vncserver_proxyclient_address=${MY_IP}
-novncproxy_base_url=http://$(CONTROLLER_HOST}:6080/vnc_auto.html
+novncproxy_base_url=http://${CONTROLLER_HOST}:6080/vnc_auto.html
 
 # Network settings
 network_api_class=nova.network.neutronv2.api.API
