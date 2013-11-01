@@ -193,7 +193,7 @@ keystone endpoint-create --region regionOne --service_id $CINDER_SERVICE_ID --pu
 SWIFT_SERVICE_ID=$(keystone service-list | awk '/\ object-store\ / {print $2}')
 SWIFT_ENDPOINT=$(echo $OSCONTROLLER | sed 's/\.[0-9]*$/.220/') #Change last octet of OpenStack Controller IP to the Swift IP.  If you changed the Swift IP's last octet, then change the .220 in this sed command
 
-PUBLIC="http://$SWIFT_ENDPOINT:8080/v1/%(tenant_id)s" 
+PUBLIC="http://$SWIFT_ENDPOINT:8080/v1/AUTH_%(tenant_id)s" 
 ADMIN="http://$SWIFT_ENDPOINT:8080/"
 INTERNAL=$PUBLIC
 
