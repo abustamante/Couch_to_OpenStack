@@ -50,17 +50,15 @@ iscsi_ip_address = $(echo $OSCONTROLLER_P | sed 's/\.[0-9]*$/.211/')
 rabbit_host = ${CONTROLLER_HOST}
 rabbit_port = 5672
 state_path = /var/lib/cinder/
+glance_host = ${CONTROLLER_HOST}
 EOF
 
 # Sync DB
 cinder-manage db sync
 
-# Setup loopback FS for iscsi
-dd if=/dev/zero of=cinder-volumes bs=1 count=0 seek=5G
 
-losetup /dev/loop2 cinder-volumes
-pvcreate /dev/loop2
-vgcreate cinder-volumes /dev/loop2
+pvcreate /dev/sdb
+vgcreate cinder-volumes /dev/sdb
 
 # Restart services
 cd /etc/init.d/; for i in $( ls cinder-* ); do sudo service $i restart; done
