@@ -712,6 +712,7 @@ auth_protocol = http
 admin_tenant_name = service
 admin_user = heat
 admin_password = heat
+auth_uri = http://$ENDPOINT:5000/v2.0/
 
 # Auth middleware that validates username/password against keystone
 [filter:authpassword]
