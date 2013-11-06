@@ -723,6 +723,18 @@ paste.filter_factory = heat.common.auth_password:filter_factory
 paste.filter_factory = heat.common.custom_backend_auth:filter_factory" | sudo tee -a /etc/heat/api-paste.ini
 
 sudo sed -i "s,^sql_connection.*,sql_connection = mysql://heat:${MYSQL_HEAT_PASS}@${MYSQL_HOST}/heat," /etc/heat/heat.conf
+sudo mkdir -p /etc/heat/environments.d
+echo '
+
+resource_registry:
+    # allow older templates with Quantum in them.
+    "OS::Quantum*": "OS::Neutron*"
+    # Choose your implementation of AWS::CloudWatch::Alarm
+    #"AWS::CloudWatch::Alarm": "file:///etc/heat/templates/AWS_CloudWatch_Alarm.yaml"
+    "AWS::CloudWatch::Alarm": "OS::Heat::CWLiteAlarm"
+    "OS::Metering::Alarm": "OS::Ceilometer::Alarm"
+    "AWS::RDS::DBInstance": "file:///etc/heat/templates/AWS_RDS_DBInstance.yaml"
+' | sudo tee -a /etc/heat/environments.d/default.yaml 
 
 sudo service heat-api restart
 sudo service heat-api-cfn restart
