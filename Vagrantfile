@@ -2,14 +2,15 @@
 # vi: set ft=ruby :
 require 'securerandom'
 
-# remove the 'client' entry to below to save on host resources
+# comment the 'proxy' entry to below to save on host resources
+# swift all-in-one (saio) node is disabled by default, uncomment to enable 
 nodes = {
     'proxy' => [1,10],
     'controller'  => [1, 200],
     'compute'  => [1, 201],
     'cinder' => [1, 211],
     'neutron' => [1, 202],
-    'saio'   => [1, 220],
+#    'saio'   => [1, 220],
 }
 
 
@@ -79,9 +80,9 @@ Vagrant.configure("2") do |config|
               vbox.customize ["modifyvm", :id, "--memory", 512]
 	        elsif prefix == "neutron"
               vbox.customize ["modifyvm", :id, "--nicpromisc4", "allow-all"]
-            elsif prefix == "swift"
-              vbox.customize ["createhd", "--filename", "swift_disk_2.vdi", "--size", 2000 * 1024]
-              vbox.customize ["storageattach", :id, "--storagectl", "SATA Controller", "--port", 1, "--device", 0, "--type","hdd", "--medium","swift_disk_2.vdi"]
+            elsif prefix == "cinder"
+              vbox.customize ["createhd", "--filename", "cinder_disk_2.vdi", "--size", 2000 * 1024]
+              vbox.customize ["storageattach", :id, "--storagectl", "SATA Controller", "--port", 1, "--device", 0, "--type","hdd", "--medium","cinder_disk_2.vdi"]
            end
           end  
         end

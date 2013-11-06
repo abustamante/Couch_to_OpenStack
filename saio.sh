@@ -5,7 +5,7 @@ ETH3_IP=$(ifconfig eth3 | awk '/inet addr/ {split ($2,A,":"); print A[2]}')
 
 apt-get install -y memcached swift swift-proxy swift-object swift-account swift-container xfsprogs
 
-echo"
+echo "
 n
 p
 
@@ -25,7 +25,7 @@ for x in {1..4}; do sudo ln -s /mnt/sdb1/$x /srv/$x; done
 sudo mkdir -p /etc/swift/object-server /etc/swift/container-server /etc/swift/account-server /srv/1/node/sdb1 /srv/2/node/sdb2 /srv/3/node/sdb3 /srv/4/node/sdb4 /var/run/swift
 sudo chown -R swift:swift /etc/swift /srv/[1-4]/ /var/run/swift
 
-echo"
+echo "
 mkdir -p /var/cache/swift /var/cache/swift2 /var/cache/swift3 /var/cache/swift4
 chown swift:swift /var/cache/swift*
 mkdir -p /var/run/swift
@@ -585,22 +585,22 @@ cd /etc/swift
 rm -f *.builder *.ring.gz backups/*.builder backups/*.ring.gz
 
 swift-ring-builder object.builder create 10 3 1
-swift-ring-builder object.builder add r1z1-127.0.0.1:6010/sdb1 1
-swift-ring-builder object.builder add r1z2-127.0.0.1:6020/sdb2 1
-swift-ring-builder object.builder add r1z3-127.0.0.1:6030/sdb3 1
-swift-ring-builder object.builder add r1z4-127.0.0.1:6040/sdb4 1
+swift-ring-builder object.builder add r1z1-172.16.80.220:6010/sdb1 1
+swift-ring-builder object.builder add r1z2-172.16.80.220:6020/sdb2 1
+swift-ring-builder object.builder add r1z3-172.16.80.220:6030/sdb3 1
+swift-ring-builder object.builder add r1z4-172.16.80.220:6040/sdb4 1
 swift-ring-builder object.builder rebalance
 swift-ring-builder container.builder create 10 3 1
-swift-ring-builder container.builder add r1z1-127.0.0.1:6011/sdb1 1
-swift-ring-builder container.builder add r1z2-127.0.0.1:6021/sdb2 1
-swift-ring-builder container.builder add r1z3-127.0.0.1:6031/sdb3 1
-swift-ring-builder container.builder add r1z4-127.0.0.1:6041/sdb4 1
+swift-ring-builder container.builder add r1z1-172.16.80.220:6011/sdb1 1
+swift-ring-builder container.builder add r1z2-172.16.80.220:6021/sdb2 1
+swift-ring-builder container.builder add r1z3-172.16.80.220:6031/sdb3 1
+swift-ring-builder container.builder add r1z4-172.16.80.220:6041/sdb4 1
 swift-ring-builder container.builder rebalance
 swift-ring-builder account.builder create 10 3 1
-swift-ring-builder account.builder add r1z1-127.0.0.1:6012/sdb1 1
-swift-ring-builder account.builder add r1z2-127.0.0.1:6022/sdb2 1
-swift-ring-builder account.builder add r1z3-127.0.0.1:6032/sdb3 1
-swift-ring-builder account.builder add r1z4-127.0.0.1:6042/sdb4 1
+swift-ring-builder account.builder add r1z1-172.16.80.220:6012/sdb1 1
+swift-ring-builder account.builder add r1z2-172.16.80.220:6022/sdb2 1
+swift-ring-builder account.builder add r1z3-172.16.80.220:6032/sdb3 1
+swift-ring-builder account.builder add r1z4-172.16.80.220:6042/sdb4 1
 swift-ring-builder account.builder rebalance" | tee -a ~/bin/remakerings
 
 echo "
