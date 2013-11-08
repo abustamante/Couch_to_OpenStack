@@ -1,4 +1,5 @@
 #!/bin/bash
+source /vagrant/.stackrc
 
 TEN=$(keystone tenant-list | awk '/\ service\ / {print $2}');
 neutron net-create --tenant-id $TEN --router:external=True provider-net
