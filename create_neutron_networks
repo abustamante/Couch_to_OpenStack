@@ -7,8 +7,8 @@ neutron subnet-create --tenant-id $TEN --name public-subnet --allocation-pool st
 neutron router-create tenant-router
 neutron router-gateway-set tenant-router provider-net
 neutron net-create frontend-network
-neutron subnet-create --name frontend-subnet1 frontend-network 172.31.0.0/24
+neutron subnet-create --name frontend-subnet1 --dns-nameserver 8.8.8.8 frontend-network 172.31.0.0/24
 neutron router-interface-add tenant-router frontend-subnet1
-neutron net-create backend-network
-neutron subnet-create --name backend-subnet1 backend-network 10.0.0.0/8
+#neutron net-create backend-network
+#neutron subnet-create --name backend-subnet1 backend-network 10.0.0.0/8
 
