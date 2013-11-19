@@ -19,7 +19,6 @@ echo "Acquire::http { Proxy 'http://${MY_IP}:3142'; };" | sudo tee /etc/apt/apt.
 
 sudo iptables -t nat -A POSTROUTING -s 192.168.80.0/24 -o eth0 -j MASQUERADE
 sudo sysctl net.ipv4.conf.all.forwarding=1
-sudo sysctl net.ipv4.conf.default.fowarding=1
 
 #Pass Proxy IP to Common.sh and other nodes
 cat > /vagrant/.proxy <<EOF
