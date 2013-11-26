@@ -560,7 +560,8 @@ vm_test_mode = yes
 
 [object-auditor]" | sudo tee -a /etc/swift/object-server/4.conf
 
-mkdir -p ~/bin
+mkdir -p /home/swift/bin
+sudo chown -R swift:swift /home/swift
 
 echo "#!/bin/bash
 
@@ -575,7 +576,7 @@ mkdir -p /srv/1/node/sdb1 /srv/2/node/sdb2 /srv/3/node/sdb3 /srv/4/node/sdb4
 sudo rm -f /var/log/debug /var/log/messages /var/log/rsyncd.log /var/log/syslog
 find /var/cache/swift* -type f -name *.recon -exec rm -f {} \;
 sudo service rsyslog restart
-sudo service memcached restart" | tee -a ~/bin/resetswift
+sudo service memcached restart" | sudo -u swift tee -a /home/swift/bin/resetswift
 
 echo "
 #!/bin/bash
@@ -584,36 +585,36 @@ cd /etc/swift
 
 rm -f *.builder *.ring.gz backups/*.builder backups/*.ring.gz
 
-swift-ring-builder object.builder create 10 3 1
+swift-ring-builder object.builder create 18 3 1
 swift-ring-builder object.builder add r1z1-172.16.80.220:6010/sdb1 1
 swift-ring-builder object.builder add r1z2-172.16.80.220:6020/sdb2 1
 swift-ring-builder object.builder add r1z3-172.16.80.220:6030/sdb3 1
 swift-ring-builder object.builder add r1z4-172.16.80.220:6040/sdb4 1
 swift-ring-builder object.builder rebalance
-swift-ring-builder container.builder create 10 3 1
+swift-ring-builder container.builder create 18 3 1
 swift-ring-builder container.builder add r1z1-172.16.80.220:6011/sdb1 1
 swift-ring-builder container.builder add r1z2-172.16.80.220:6021/sdb2 1
 swift-ring-builder container.builder add r1z3-172.16.80.220:6031/sdb3 1
 swift-ring-builder container.builder add r1z4-172.16.80.220:6041/sdb4 1
 swift-ring-builder container.builder rebalance
-swift-ring-builder account.builder create 10 3 1
+swift-ring-builder account.builder create 18 3 1
 swift-ring-builder account.builder add r1z1-172.16.80.220:6012/sdb1 1
 swift-ring-builder account.builder add r1z2-172.16.80.220:6022/sdb2 1
 swift-ring-builder account.builder add r1z3-172.16.80.220:6032/sdb3 1
 swift-ring-builder account.builder add r1z4-172.16.80.220:6042/sdb4 1
-swift-ring-builder account.builder rebalance" | tee -a ~/bin/remakerings
+swift-ring-builder account.builder rebalance" | sudo -u swift tee -a /home/swift/bin/remakerings
 
 echo "
 #!/bin/bash
 
-swift-init main start" | tee -a ~/bin/startmain
+swift-init main start" | sudo -u swift tee -a /home/swift/bin/startmain
 
 echo "
 #!/bin/bash
 
-swift-init rest start" | tee -a ~/bin/startrest
+swift-init rest start" | sudo -u swift tee -a /home/swift/bin/startrest
 
-chmod +x ~/bin/*
-sudo ~/bin/remakerings
-sudo ~/bin/startmain
-sudo ~/bin/startrest
+sudo -u swift chmod +x /home/swift/bin/*
+sudo -u swift /home/swift/bin/remakerings
+sudo -u swift /home/swift/bin/startmain
+sudo -u swift /home/swift/bin/startrest
