@@ -14,7 +14,7 @@ export DEBIAN_FRONTEND=noninteractive
 sudo apt-get update
 
 # Grizzly Goodness
-sudo apt-get -y install ubuntu-cloud-keyring
+sudo apt-get -y --force-yes install ubuntu-cloud-keyring
 echo "grub-pc	grub-pc/install_devices	multiselect	/dev/sda" | sudo debconf-set-selections
 echo "deb  http://ubuntu-cloud.archive.canonical.com/ubuntu precise-updates/havana main" | sudo tee -a /etc/apt/sources.list.d/havana.list
 sudo apt-get update && sudo apt-get dist-upgrade -y
