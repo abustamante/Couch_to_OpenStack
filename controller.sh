@@ -16,7 +16,7 @@ export DEBIAN_FRONTEND=noninteractive
 sudo apt-get update
 
 # Grizzly Goodness
-sudo apt-get -y install ubuntu-cloud-keyring
+sudo apt-get -y --force-yes install ubuntu-cloud-keyring
 echo "deb  http://ubuntu-cloud.archive.canonical.com/ubuntu precise-updates/havana main" | sudo tee -a /etc/apt/sources.list.d/havana.list
 echo "grub-pc	grub-pc/install_devices	multiselect	/dev/sda" | sudo debconf-set-selections
 sudo apt-get update && sudo apt-get dist-upgrade -y
@@ -42,7 +42,7 @@ echo "mysql-server-5.5 mysql-server/root_password_again seen true" | sudo debcon
 # MySQL Install
 ###############################
 
-sudo apt-get -y install vim mysql-server python-mysqldb
+sudo apt-get -y --force-yes install vim mysql-server python-mysqldb
 
 sudo sed -i "s/^bind\-address.*/bind-address = 0.0.0.0/g" /etc/mysql/my.cnf
 sudo sed -i "s/^#max_connections.*/max_connections = 512/g" /etc/mysql/my.cnf
@@ -64,7 +64,7 @@ mysqladmin -uroot -p${MYSQL_ROOT_PASS} flush-privileges
 ###############################
 # Keystone Install
 ###############################
-sudo apt-get -y install keystone python-keystone python-keystoneclient
+sudo apt-get -y --force-yes install keystone python-keystone python-keystoneclient
 
 MYSQL_ROOT_PASS=openstack
 MYSQL_KEYSTONE_PASS=openstack
@@ -236,7 +236,7 @@ keystone user-role-add --user $NEUTRON_USER_ID --role $ADMIN_ROLE_ID --tenant_id
 
 # Install Service
 
-sudo apt-get -y install glance
+sudo apt-get -y --force-yes install glance
 
 # Create database
 MYSQL_ROOT_PASS=openstack
@@ -322,7 +322,7 @@ export OS_PASSWORD=openstack
 export OS_AUTH_URL=http://${MY_IP}:5000/v2.0/
 export OS_NO_CACHE=1
 
-sudo apt-get -y install wget
+sudo apt-get -y --force-yes install wget
 
 # Get the images
 # First check host
@@ -367,7 +367,7 @@ mysql -uroot -p$MYSQL_ROOT_PASS -e 'CREATE DATABASE neutron;'
 mysql -uroot -p$MYSQL_ROOT_PASS -e "GRANT ALL PRIVILEGES ON neutron.* TO 'neutron'@'%';"
 mysql -uroot -p$MYSQL_ROOT_PASS -e "SET PASSWORD FOR 'neutron'@'%' = PASSWORD('$MYSQL_NEUTRON_PASS');"
 
-sudo apt-get -y install neutron-server neutron-plugin-openvswitch 
+sudo apt-get -y --force-yes install neutron-server neutron-plugin-openvswitch 
 
 # /etc/neutron/api-paste.ini
 rm -f /etc/neutron/api-paste.ini
@@ -665,7 +665,7 @@ sudo service swift-proxy start
 ###############################
 # Everyone loves Horizon dashboard
 ###############################
-sudo apt-get -y install openstack-dashboard
+sudo apt-get -y --force-yes install openstack-dashboard
 ###############################
 # OpenStack Deployment Complete
 ###############################
