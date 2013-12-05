@@ -1,7 +1,7 @@
 export DEBIAN_FRONTEND=noninteractive
 
 # Setup Proxy
-export APT_PROXY=192.168.80.10
+export APT_PROXY=172.16.80.10
 export APT_PROXY_PORT=3142
 #
 # If you have a proxy outside of your VirtualBox environment, use it
