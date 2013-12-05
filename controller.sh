@@ -3,7 +3,7 @@ source /vagrant/.proxy
 export DEBIAN_FRONTEND=noninteractive
 
 # Setup Proxy
-export APT_PROXY=${PROXY_HOST}
+export APT_PROXY=192.168.80.10
 export APT_PROXY_PORT=3142
 #
 # If you have a proxy outside of your VirtualBox environment, use it
@@ -460,7 +460,9 @@ sudo apt-get -y --force-yes install rabbitmq-server nova-novncproxy novnc nova-a
 NOVA_CONF=/etc/nova/nova.conf
 NOVA_API_PASTE=/etc/nova/api-paste.ini
 
-cat > /tmp/nova.conf << EOF
+sudo rm -f $NOVA_CONF
+
+echo "
 [DEFAULT]
 dhcpbridge_flagfile=/etc/nova/nova.conf
 dhcpbridge=/usr/bin/nova-dhcpbridge
@@ -538,10 +540,8 @@ scheduler_default_filters=AllHostsFilter
 auth_strategy=keystone
 keystone_ec2_url=http://${KEYSTONE_ENDPOINT}:5000/v2.0/ec2tokens
 
-EOF
+" | sudo tee -a $NOVA_CONF
 
-sudo rm -f $NOVA_CONF
-sudo mv /tmp/nova.conf $NOVA_CONF
 sudo chmod 0640 $NOVA_CONF
 sudo chown nova:nova $NOVA_CONF
 
