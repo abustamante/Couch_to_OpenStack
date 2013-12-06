@@ -30,7 +30,8 @@ OSC_PRIV_IP=${CONTROLLER_HOST_PRIV}
 export OSCONTROLLER_P=$OSC_PRIV_IP
 
 # /etc/cinder/cinder.conf
-cat > /etc/cinder/cinder.conf <<EOF
+
+echo "
 [DEFAULT]
 rootwrap_config=/etc/cinder/rootwrap.conf
 sql_connection = mysql://cinder:openstack@${CONTROLLER_HOST}/cinder
@@ -51,7 +52,7 @@ rabbit_host = ${CONTROLLER_HOST}
 rabbit_port = 5672
 state_path = /var/lib/cinder/
 glance_host = ${CONTROLLER_HOST}
-EOF
+" | sudo tee -a /etc/cinder/cinder.conf
 
 # Sync DB
 cinder-manage db sync

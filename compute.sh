@@ -133,7 +133,9 @@ service neutron-plugin-openvswitch-agent restart
 NOVA_CONF=/etc/nova/nova.conf
 NOVA_API_PASTE=/etc/nova/api-paste.ini
 
-cat > /tmp/nova.conf << EOF
+sudo rm -rf $NOVA_CONF
+
+echo "
 [DEFAULT]
 dhcpbridge_flagfile=/etc/nova/nova.conf
 dhcpbridge=/usr/bin/nova-dhcpbridge
@@ -215,11 +217,8 @@ scheduler_default_filters=AllHostsFilter
 # Auth
 auth_strategy=keystone
 keystone_ec2_url=http://${CONTROLLER_HOST}:5000/v2.0/ec2tokens
+" | sudo tee -a $NOVA_CONF
 
-EOF
-
-  sudo rm -f $NOVA_CONF
-  sudo mv /tmp/nova.conf $NOVA_CONF
   sudo chmod 0640 $NOVA_CONF
   sudo chown nova:nova $NOVA_CONF
   sudo chmod 0644 /boot/vmlinuz*
