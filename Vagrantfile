@@ -3,7 +3,6 @@
 require 'securerandom'
 
 # comment the 'proxy' entry to below to save on host resources
-# swift all-in-one (saio) node is disabled by default, uncomment to enable 
 nodes = {
     'proxy' => [1,10],
     'controller'  => [1, 200],
@@ -83,6 +82,9 @@ Vagrant.configure("2") do |config|
             elsif prefix == "cinder"
               vbox.customize ["createhd", "--filename", "cinder_disk_2.vdi", "--size", 2000 * 1024]
               vbox.customize ["storageattach", :id, "--storagectl", "SATA Controller", "--port", 1, "--device", 0, "--type","hdd", "--medium","cinder_disk_2.vdi"]
+            elsif prefix == "saio"
+              vbox.customize ["createhd", "--filename", "saio_disk_2.vdi", "--size", 2000 * 1024]
+              vbox.customize ["storageattach", :id, "--storagectl", "SATA Controller", "--port", 1, "--device", 0, "--type","hdd", "--medium","saio_disk_2.vdi"]
            end
           end  
         end

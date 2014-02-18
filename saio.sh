@@ -3,11 +3,12 @@
 MY_IP=$(ifconfig eth1 | awk '/inet addr/ {split ($2,A,":"); print A[2]}')
 ETH3_IP=$(ifconfig eth3 | awk '/inet addr/ {split ($2,A,":"); print A[2]}')
 
-apt-get install -y memcached swift swift-proxy swift-object swift-account swift-container xfsprogs
+sudo apt-get install -y memcached swift swift-proxy swift-object swift-account swift-container xfsprogs
 
 echo "
 n
 p
+
 
 
 t
@@ -20,7 +21,7 @@ sudo mkdir -p /mnt/sdb1
 sudo mount /mnt/sdb1
 sudo mkdir /mnt/sdb1/1 /mnt/sdb1/2 /mnt/sdb1/3 /mnt/sdb1/4
 sudo chown -R swift:swift /mnt/sdb1/*
-mkdir /srv
+sudo mkdir /srv
 for x in {1..4}; do sudo ln -s /mnt/sdb1/$x /srv/$x; done
 sudo mkdir -p /etc/swift/object-server /etc/swift/container-server /etc/swift/account-server /srv/1/node/sdb1 /srv/2/node/sdb2 /srv/3/node/sdb3 /srv/4/node/sdb4 /var/run/swift
 sudo chown -R swift:swift /etc/swift /srv/[1-4]/ /var/run/swift
