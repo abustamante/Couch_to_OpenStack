@@ -1,5 +1,7 @@
-source /vagrant/.controller
-source /vagrant/.proxy
+export PROXY_HOST=172.16.80.10
+export CONTROLLER_HOST=172.16.80.200
+export CONTROLLER_HOST_PRIV=10.10.80.200
+
 export DEBIAN_FRONTEND=noninteractive
 
 # Setup Proxy
@@ -12,7 +14,6 @@ then
 	echo 'Acquire::http { Proxy "http://'${APT_PROXY}:${APT_PROXY_PORT}'"; };' | sudo tee /etc/apt/apt.conf.d/01apt-cacher-ng-proxy
 fi
 
-export DEBIAN_FRONTEND=noninteractive
 sudo apt-get update
 
 # Grizzly Goodness

@@ -2,11 +2,30 @@
 
 # network.sh
 
-# Authors: Kevin Jackson (kevin@linuxservices.co.uk)
-#          Cody Bunch (bunchc@gmail.com)
-
 # Source in common env vars
-. /vagrant/common.sh
+export PROXY_HOST=172.16.80.10
+export CONTROLLER_HOST=172.16.80.200
+export CONTROLLER_HOST_PRIV=10.10.80.200
+export DEBIAN_FRONTEND=noninteractive
+
+# Setup Proxy
+export APT_PROXY=${PROXY_HOST}
+export APT_PROXY_PORT=3142
+#
+# If you have a proxy outside of your VirtualBox environment, use it
+if [[ ! -z "$APT_PROXY" ]]
+then
+	echo 'Acquire::http { Proxy "http://'${APT_PROXY}:${APT_PROXY_PORT}'"; };' | sudo tee /etc/apt/apt.conf.d/01apt-cacher-ng-proxy
+fi
+
+sudo apt-get update
+
+# Grizzly Goodness
+sudo apt-get -y install ubuntu-cloud-keyring
+echo "grub-pc	grub-pc/install_devices	multiselect	/dev/sda" | sudo debconf-set-selections
+echo "deb  http://ubuntu-cloud.archive.canonical.com/ubuntu precise-updates/havana main" | sudo tee -a /etc/apt/sources.list.d/havana.list
+sudo apt-get update && sudo apt-get dist-upgrade -y
+
 
 # The routeable IP of the node is on our eth1 interface
 MY_IP=$(ifconfig eth1 | awk '/inet addr/ {split ($2,A,":"); print A[2]}')
