@@ -18,10 +18,10 @@ w
 
 sudo mkfs -t xfs -L swift /dev/sdb1
 sudo mkdir -p /mnt/sdb1
+echo "/dev/sdb1 /mnt/sdb1 xfs noatime,nodiratime,nobarrier,logbufs=8 0 0" | sudo tee -a /etc/fstab
 sudo mount /mnt/sdb1
 sudo mkdir /mnt/sdb1/1 /mnt/sdb1/2 /mnt/sdb1/3 /mnt/sdb1/4
 sudo chown -R swift:swift /mnt/sdb1/*
-sudo mkdir /srv
 for x in {1..4}; do sudo ln -s /mnt/sdb1/$x /srv/$x; done
 sudo mkdir -p /etc/swift/object-server /etc/swift/container-server /etc/swift/account-server /srv/1/node/sdb1 /srv/2/node/sdb2 /srv/3/node/sdb3 /srv/4/node/sdb4 /var/run/swift
 sudo chown -R swift:swift /etc/swift /srv/[1-4]/ /var/run/swift
